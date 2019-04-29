@@ -1,0 +1,84 @@
+export
+ruleVBGPCOutVPP,
+ruleSVBGPCOutVGG,
+ruleSVBGPCMeanGVG,
+ruleSVBGPCVarGV,
+ruleMGPCGGD
+
+
+function ruleVBGPCOutVPP(   msg_out::Nothing,
+                            dist_mean::ProbabilityDistribution{Univariate, PointMass},
+                            dist_v::ProbabilityDistribution{Univariate, PointMass})
+    (m_mean) = dist_mean.params[:m]
+    (m_v) = dist_v.params[:m]
+
+    gamma = exp(m_v)
+
+    Message(GaussianMeanVariance, m=m_mean,  v=gamma)
+end
+
+function ruleSVBGPCOutVGG(  msg_out::Nothing,
+                            msg_mean::Message{F,Univariate},
+                            dist_v::ProbabilityDistribution{Univariate}) where F<:Gaussian
+
+    d_mean = convert(ProbabilityDistribution{Univariate,GaussianMeanVariance}, msg_mean.dist)
+
+    m_v =  unsafeMean(dist_v)
+    v_v = unsafeCov(dist_v)
+    m_mean = d_mean.params[:m]
+    v_mean = d_mean.params[:v]
+    gamma = exp(m_v - v_v/2)
+
+
+    Message(GaussianMeanVariance, m=m_mean,  v=v_mean + gamma)
+end
+
+function ruleSVBGPCMeanGVG( msg_out::Message{F,Univariate},
+                            msg_mean::Nothing,
+                            dist_v::ProbabilityDistribution) where F<:Gaussian
+
+    d_out = convert(ProbabilityDistribution{Univariate,GaussianMeanVariance},msg_out.dist)
+
+    m_out = d_out.params[:m]
+    v_out = d_out.params[:v]
+    m_v =  unsafeMean(dist_v)
+    v_v = unsafeCov(dist_v)
+    gamma = exp(m_v - v_v/2)
+
+    Message(GaussianMeanVariance, m=m_out,  v=v_out + gamma)
+end
+
+function ruleSVBGPCVarGV(   dist_out_mean::ProbabilityDistribution{Multivariate},
+                            dist_v::Nothing)
+
+    (m, V) = unsafeMeanCov(dist_out_mean)
+
+    A = V[1]-V[2]-V[3]+V[4]+(m[1]-m[2])^2
+    Message(GaussianMeanVariance, m=log(A),  v=2/A^2)
+end
+
+function ruleMGPCGGD(   msg_out::Message{F1, Univariate},
+                        msg_m::Message{F2, Univariate},
+                        dist_v::ProbabilityDistribution{Univariate, F3}) where {F1<:Gaussian,F2<:Gaussian,F3<:Gaussian}
+
+    d_out = convert(ProbabilityDistribution{Univariate,GaussianMeanVariance},msg_out.dist)
+    d_mean = convert(ProbabilityDistribution{Univariate,GaussianMeanVariance},msg_m.dist)
+    d_v = convert(ProbabilityDistribution{Univariate,GaussianMeanVariance},dist_v)
+
+    m_mean = d_mean.params[:m]
+    v_mean = d_mean.params[:v]
+    w_mean = 1/v_mean
+    m_out = d_out.params[:m]
+    v_out = d_out.params[:v]
+    w_out = 1/v_out
+    m_v =  unsafeMean(dist_v)
+    v_v = unsafeCov(dist_v)
+    w_v = 1/v_v
+    gamma = exp(-m_v+v_v/2)
+    determinant = 1/(w_out*w_mean + gamma*(w_out+w_mean))
+
+    invW = determinant * [w_mean+gamma gamma; gamma w_out+gamma]
+    mean = invW*[w_out*m_out; w_mean*m_mean]
+
+    return ProbabilityDistribution(Multivariate, GaussianMeanVariance, m=mean, v=invW)
+end
