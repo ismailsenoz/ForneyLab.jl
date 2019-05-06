@@ -29,8 +29,8 @@ function ruleSVBGPCOutVGG(  msg_out::Nothing,
     v_mean = d_mean.params[:v]
     gamma = exp(m_v - v_v/2)
 
-
-    Message(GaussianMeanVariance, m=m_mean,  v=v_mean + gamma)
+    # println(m_mean," ", v_mean+gamma)
+    Message(GaussianMeanVariance, m=clamp(m_mean,tiny,huge),  v=clamp(v_mean + gamma,tiny,huge))
 end
 
 function ruleSVBGPCMeanGVG( msg_out::Message{F,Univariate},
@@ -45,7 +45,8 @@ function ruleSVBGPCMeanGVG( msg_out::Message{F,Univariate},
     v_v = unsafeCov(dist_v)
     gamma = exp(m_v - v_v/2)
 
-    Message(GaussianMeanVariance, m=m_out,  v=v_out + gamma)
+    # println(m_out," ", v_out+gamma)
+    Message(GaussianMeanVariance, m=clamp(m_out,tiny,huge),  v=clamp(v_out + gamma,tiny,huge))
 end
 
 function ruleSVBGPCVarGV(   dist_out_mean::ProbabilityDistribution{Multivariate},
@@ -54,7 +55,10 @@ function ruleSVBGPCVarGV(   dist_out_mean::ProbabilityDistribution{Multivariate}
     (m, V) = unsafeMeanCov(dist_out_mean)
 
     A = V[1]-V[2]-V[3]+V[4]+(m[1]-m[2])^2
-    Message(GaussianMeanVariance, m=log(A),  v=2/A^2)
+
+    # println(log(A)," ", 2/A^2)
+    Message(GaussianMeanVariance, m=clamp(log(A),tiny,huge),  v=clamp(2/(A^2),tiny,huge))
+
 end
 
 function ruleMGPCGGD(   msg_out::Message{F1, Univariate},
@@ -77,7 +81,7 @@ function ruleMGPCGGD(   msg_out::Message{F1, Univariate},
     gamma = exp(-m_v+v_v/2)
     determinant = 1/(w_out*w_mean + gamma*(w_out+w_mean))
 
-    invW = determinant * [w_mean+gamma gamma; gamma w_out+gamma]
+    invW = determinant .* [w_mean+gamma gamma; gamma w_out+gamma]
     mean = invW*[w_out*m_out; w_mean*m_mean]
 
     return ProbabilityDistribution(Multivariate, GaussianMeanVariance, m=mean, v=invW)
