@@ -107,3 +107,5 @@ function differentialEntropy(dist::ProbabilityDistribution{Multivariate, F}) whe
             (dims(dist)/2)*log(2*pi) +
             (dims(dist)/2)
 end
+
+vague(::Type{Gaussian}) = ProbabilityDistribution(Univariate, GaussianMeanVariance, m=0.0, v=huge)

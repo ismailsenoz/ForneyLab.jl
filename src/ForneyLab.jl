@@ -55,6 +55,7 @@ include("factor_nodes/softmax.jl")
 include("factor_nodes/nonlinear.jl")
 include("factor_nodes/dot_product.jl")
 include("factor_nodes/gpc.jl")
+include("factor_nodes/gpc_transformed.jl")
 
 # Factor graph
 include("factor_graph.jl")
@@ -101,6 +102,7 @@ include("update_rules/softmax.jl")
 include("update_rules/nonlinear.jl")
 include("update_rules/dot_product.jl")
 include("update_rules/gpc.jl")
+include("update_rules/gpc_transformed.jl")
 
 *(x::ProbabilityDistribution, y::ProbabilityDistribution) = prod!(x, y) # * operator for probability distributions
 
