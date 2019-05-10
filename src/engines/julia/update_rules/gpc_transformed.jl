@@ -66,6 +66,7 @@ function ruleSVBGPCLinearVarGVPP(   dist_out_mean::ProbabilityDistribution{Multi
     m_kappa = dist_kappa.params[:m]
     m_omega = dist_omega.params[:m]
     A = V[1]-V[2]-V[3]+V[4]+(m[1]-m[2])^2
+    println(A)
     mean = (log(A)-m_omega)/m_kappa
 
     Message(GaussianMeanVariance, m=clamp(mean,tiny,huge),  v=clamp(2/(m_kappa^2*A^2),tiny,huge))

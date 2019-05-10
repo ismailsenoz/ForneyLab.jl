@@ -35,7 +35,7 @@ end
 
 function ruleSVBGPCMeanGVG( msg_out::Message{F,Univariate},
                             msg_mean::Nothing,
-                            dist_v::ProbabilityDistribution) where F<:Gaussian
+                            dist_v::ProbabilityDistribution) where F<:Union{Gaussian, PointMass}
 
     d_out = convert(ProbabilityDistribution{Univariate,GaussianMeanVariance},msg_out.dist)
 
