@@ -34,7 +34,9 @@ function ruleSVBGPCLinearOutVGGPP(  msg_out::Nothing,
     v_mean = d_mean.params[:v]
     m_kappa = dist_kappa.params[:m]
     m_omega = dist_omega.params[:m]
-    gamma = exp(m_kappa*m_v - (m_kappa^2)*v_v/2 + m_omega)
+    gamma = exp(m_kappa*m_v + (m_kappa^2)*v_v/2 + m_omega)
+    println("forward messages")
+    println(m_mean," ", v_mean, " ", gamma)
 
     Message(GaussianMeanVariance, m=clamp(m_mean,tiny,huge),  v=clamp(v_mean + gamma,tiny,huge))
 end
@@ -53,22 +55,24 @@ function ruleSVBGPCLinearMeanGVGPP( msg_out::Message{F,Univariate},
     v_v = unsafeCov(dist_v)
     m_kappa = dist_kappa.params[:m]
     m_omega = dist_omega.params[:m]
-    gamma = exp(m_kappa*m_v - (m_kappa^2)*v_v/2 + m_omega)
+    gamma = exp(m_kappa*m_v + (m_kappa^2)*v_v/2 + m_omega)
+    println("backward messages")
+    println(m_out," ", v_out, " ", gamma)
     Message(GaussianMeanVariance, m=clamp(m_out,tiny,huge),  v=clamp(v_out + gamma,tiny,huge))
 end
 
 function ruleSVBGPCLinearVarGVPP(   dist_out_mean::ProbabilityDistribution{Multivariate},
                             dist_v::Nothing,
-                            dist_kappa::ProbabilityDistribution{Univariate,PointMass},
-                            dist_omega::ProbabilityDistribution{Univariate,PointMass})
+                            dist_kappa::ProbabilityDistribution{Univariate},
+                            dist_omega::ProbabilityDistribution{Univariate})
 
     (m, V) = unsafeMeanCov(dist_out_mean)
-    m_kappa = dist_kappa.params[:m]
-    m_omega = dist_omega.params[:m]
-    A = V[1]-V[2]-V[3]+V[4]+(m[1]-m[2])^2
-    println(A)
-    mean = (log(A)-m_omega)/m_kappa
-
+    m_kappa = unsafeMean(dist_kappa)
+    m_omega = unsafeMean(dist_omega)
+    A = V[1,1]-V[1,2]-V[2,1]+V[2,2]+(m[1]-m[2])^2
+    mean = (log(A)+m_omega)/m_kappa
+    println("upward messages")
+    println(mean," ",A, " ", 2/(m_kappa^2*A^2))
     Message(GaussianMeanVariance, m=clamp(mean,tiny,huge),  v=clamp(2/(m_kappa^2*A^2),tiny,huge))
 
 end
@@ -76,28 +80,26 @@ end
 function ruleMGPCLinearGGDDD(   msg_out::Message{F1, Univariate},
                         msg_m::Message{F2, Univariate},
                         dist_v::ProbabilityDistribution{Univariate, F3},
-                        dist_kappa::ProbabilityDistribution{Univariate,PointMass},
-                        dist_omega::ProbabilityDistribution{Univariate,PointMass}) where {F1<:Gaussian,F2<:Gaussian,F3<:Gaussian}
+                        dist_kappa::ProbabilityDistribution{Univariate},
+                        dist_omega::ProbabilityDistribution{Univariate}) where {F1<:Gaussian,F2<:Gaussian,F3<:Gaussian}
 
-    d_out = convert(ProbabilityDistribution{Univariate,GaussianMeanVariance},msg_out.dist)
-    d_mean = convert(ProbabilityDistribution{Univariate,GaussianMeanVariance},msg_m.dist)
-    d_v = convert(ProbabilityDistribution{Univariate,GaussianMeanVariance},dist_v)
+    d_out = convert(ProbabilityDistribution{Univariate,GaussianWeightedMeanPrecision},msg_out.dist)
+    d_mean = convert(ProbabilityDistribution{Univariate,GaussianWeightedMeanPrecision},msg_m.dist)
 
-    m_mean = d_mean.params[:m]
-    v_mean = d_mean.params[:v]
-    w_mean = 1/v_mean
-    m_out = d_out.params[:m]
-    v_out = d_out.params[:v]
-    w_out = 1/v_out
-    m_v =  unsafeMean(dist_v)
-    v_v = unsafeCov(dist_v)
-    w_v = 1/v_v
-    m_kappa = dist_kappa.params[:m]
-    m_omega = dist_omega.params[:m]
-    gamma = exp(-m_kappa*m_v + (m_kappa^2)*v_v/2 - m_omega)
-    determinant = 1/(w_out*w_mean + gamma*(w_out+w_mean))
+    xi_mean = d_mean.params[:xi]
+    w_mean = d_mean.params[:w]
+    xi_out = d_out.params[:xi]
+    w_out = d_out.params[:w]
+    (m_v, v_v) =  unsafeMeanCov(dist_v)
+    m_kappa = unsafeMean(dist_kappa)
+    m_omega = unsafeMean(dist_omega)
 
-    invW = determinant .* [w_mean+gamma gamma; gamma w_out+gamma]
-    mean = invW*[w_out*m_out; w_mean*m_mean]
-    return ProbabilityDistribution(Multivariate, GaussianMeanVariance, m=mean, v=invW)
+    gamma = clamp(1/exp(m_kappa*m_v +(m_kappa^2)*v_v/2 +m_omega),tiny, huge)
+    q_W = [w_out+gamma -gamma; -gamma w_mean+gamma]
+    q_xi = [xi_out; xi_mean]
+    println("marginals")
+    println(q_W, " ", q_xi )
+
+
+    return ProbabilityDistribution(Multivariate, GaussianWeightedMeanPrecision, xi=q_xi, w=q_W)
 end

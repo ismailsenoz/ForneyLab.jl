@@ -27,7 +27,7 @@ function ruleSVBGPCOutVGG(  msg_out::Nothing,
     v_v = unsafeCov(dist_v)
     m_mean = d_mean.params[:m]
     v_mean = d_mean.params[:v]
-    gamma = exp(m_v - v_v/2)
+    gamma = exp(m_v + v_v/2)
 
     # println(m_mean," ", v_mean+gamma)
     Message(GaussianMeanVariance, m=clamp(m_mean,tiny,huge),  v=clamp(v_mean + gamma,tiny,huge))
@@ -43,7 +43,7 @@ function ruleSVBGPCMeanGVG( msg_out::Message{F,Univariate},
     v_out = d_out.params[:v]
     m_v =  unsafeMean(dist_v)
     v_v = unsafeCov(dist_v)
-    gamma = exp(m_v - v_v/2)
+    gamma = exp(m_v + v_v/2)
 
     # println(m_out," ", v_out+gamma)
     Message(GaussianMeanVariance, m=clamp(m_out,tiny,huge),  v=clamp(v_out + gamma,tiny,huge))
@@ -78,7 +78,7 @@ function ruleMGPCGGD(   msg_out::Message{F1, Univariate},
     m_v =  unsafeMean(dist_v)
     v_v = unsafeCov(dist_v)
     w_v = 1/v_v
-    gamma = exp(-m_v+v_v/2)
+    gamma = 1/exp(+m_v+v_v/2)
     determinant = 1/(w_out*w_mean + gamma*(w_out+w_mean))
 
     invW = determinant .* [w_mean+gamma gamma; gamma w_out+gamma]
