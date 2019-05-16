@@ -27,7 +27,7 @@ function ruleSVBGPCOutVGG(  msg_out::Nothing,
     v_v = unsafeCov(dist_v)
     m_mean = d_mean.params[:m]
     v_mean = d_mean.params[:v]
-    gamma = exp(m_v + v_v/2)
+    gamma = exp(m_v - v_v/2)
 
     # println(m_mean," ", v_mean+gamma)
     Message(GaussianMeanVariance, m=clamp(m_mean,tiny,huge),  v=clamp(v_mean + gamma,tiny,huge))
@@ -43,7 +43,7 @@ function ruleSVBGPCMeanGVG( msg_out::Message{F,Univariate},
     v_out = d_out.params[:v]
     m_v =  unsafeMean(dist_v)
     v_v = unsafeCov(dist_v)
-    gamma = exp(m_v + v_v/2)
+    gamma = exp(m_v - v_v/2)
 
     # println(m_out," ", v_out+gamma)
     Message(GaussianMeanVariance, m=clamp(m_out,tiny,huge),  v=clamp(v_out + gamma,tiny,huge))
@@ -54,7 +54,7 @@ function ruleSVBGPCVarGV(   dist_out_mean::ProbabilityDistribution{Multivariate}
 
     (m, V) = unsafeMeanCov(dist_out_mean)
 
-    A = V[1]-V[2]-V[3]+V[4]+(m[1]-m[2])^2
+    A = V[1,1]-V[1,2]-V[2,1]+V[2,2]+(m[1]-m[2])^2
 
     # println(log(A)," ", 2/A^2)
     Message(GaussianMeanVariance, m=clamp(log(A),tiny,huge),  v=clamp(2/(A^2),tiny,huge))
@@ -65,24 +65,21 @@ function ruleMGPCGGD(   msg_out::Message{F1, Univariate},
                         msg_m::Message{F2, Univariate},
                         dist_v::ProbabilityDistribution{Univariate, F3}) where {F1<:Gaussian,F2<:Gaussian,F3<:Gaussian}
 
-    d_out = convert(ProbabilityDistribution{Univariate,GaussianMeanVariance},msg_out.dist)
-    d_mean = convert(ProbabilityDistribution{Univariate,GaussianMeanVariance},msg_m.dist)
-    d_v = convert(ProbabilityDistribution{Univariate,GaussianMeanVariance},dist_v)
+    d_out = convert(ProbabilityDistribution{Univariate,GaussianWeightedMeanPrecision},msg_out.dist)
+    d_mean = convert(ProbabilityDistribution{Univariate,GaussianWeightedMeanPrecision},msg_m.dist)
 
-    m_mean = d_mean.params[:m]
-    v_mean = d_mean.params[:v]
-    w_mean = 1/v_mean
-    m_out = d_out.params[:m]
-    v_out = d_out.params[:v]
-    w_out = 1/v_out
-    m_v =  unsafeMean(dist_v)
-    v_v = unsafeCov(dist_v)
-    w_v = 1/v_v
-    gamma = 1/exp(+m_v+v_v/2)
-    determinant = 1/(w_out*w_mean + gamma*(w_out+w_mean))
+    xi_mean = d_mean.params[:xi]
+    w_mean = d_mean.params[:w]
+    xi_out = d_out.params[:xi]
+    w_out = d_out.params[:w]
+    (m_v, v_v) =  unsafeMeanCov(dist_v)
 
-    invW = determinant .* [w_mean+gamma gamma; gamma w_out+gamma]
-    mean = invW*[w_out*m_out; w_mean*m_mean]
+    gamma = clamp(exp(-m_v +v_v/2 ),tiny, huge)
+    q_W = [w_out+gamma -gamma; -gamma w_mean+gamma]
+    q_xi = [xi_out; xi_mean]
+    # println("marginals")
+    # println(q_W, " ", q_xi )
+    return ProbabilityDistribution(Multivariate, GaussianWeightedMeanPrecision, xi=q_xi, w=q_W)
 
-    return ProbabilityDistribution(Multivariate, GaussianMeanVariance, m=mean, v=invW)
+
 end
