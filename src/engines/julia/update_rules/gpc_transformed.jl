@@ -35,10 +35,10 @@ function ruleSVBGPCLinearOutVGGPP(  msg_out::Nothing,
     m_kappa = dist_kappa.params[:m]
     m_omega = dist_omega.params[:m]
     gamma = exp(m_kappa*m_v - (m_kappa^2)*v_v/2 + m_omega)
-    # println("forward messages")
-    # println(m_mean," ", v_mean, " ", gamma)
+    println("forward messages")
+    println(m_mean," ", v_mean, " ", gamma)
 
-    Message(GaussianMeanVariance, m=clamp(m_mean,tiny,huge),  v=clamp(v_mean + gamma,tiny,huge))
+    Message(GaussianMeanVariance, m=m_mean,  v=v_mean + gamma)
 end
 
 function ruleSVBGPCLinearMeanGVGPP( msg_out::Message{F,Univariate},
@@ -56,9 +56,9 @@ function ruleSVBGPCLinearMeanGVGPP( msg_out::Message{F,Univariate},
     m_kappa = dist_kappa.params[:m]
     m_omega = dist_omega.params[:m]
     gamma = exp(m_kappa*m_v - (m_kappa^2)*v_v/2 + m_omega)
-    # println("backward messages")
-    # println(m_out," ", v_out, " ", gamma)
-    Message(GaussianMeanVariance, m=clamp(m_out,tiny,huge),  v=clamp(v_out + gamma,tiny,huge))
+    println("backward messages")
+    println(m_out," ", v_out, " ", gamma)
+    Message(GaussianMeanVariance, m=m_out,  v=v_out + gamma)
 end
 
 function ruleSVBGPCLinearVarGVPP(   dist_out_mean::ProbabilityDistribution{Multivariate},
@@ -70,11 +70,15 @@ function ruleSVBGPCLinearVarGVPP(   dist_out_mean::ProbabilityDistribution{Multi
     m_kappa = unsafeMean(dist_kappa)
     m_omega = unsafeMean(dist_omega)
     A = V[1,1]-V[1,2]-V[2,1]+V[2,2]+(m[1]-m[2])^2
+    # A = V[1,1]+V[2,2]+(m[1]-m[2])^2
     mean = (log(A) - m_omega)/m_kappa
+    # println((m[1]-m[2])^2)
     # println("upward messages")
-    # println(mean," ", A, " ", 2/(m_kappa^2*A^2))
-    Message(GaussianMeanVariance, m=clamp(mean,tiny,huge),  v=clamp(2/(m_kappa^2*A^2),tiny,huge))
-
+    # println("variance: ", 2/(m_kappa^2*A^2))
+    # println("clamped variance value: ", clamp(2/(m_kappa^2*A^2),tiny,2*1e7*m_kappa^2*A^2))
+    # println("precision: ", 1/clamp(2/(m_kappa^2*A^2),tiny,2*1e7*m_kappa^2*A^2))
+    Message(GaussianMeanVariance, m=mean,  v=clamp(2/(m_kappa^2*A^2),tiny,1e7*(m_kappa^2*A^2/2)))
+    # Message(GaussianMeanVariance, m=mean,  v=2/(m_kappa^2*A^2))
 end
 
 function ruleMGPCLinearGGDDD(   msg_out::Message{F1, Univariate},
@@ -94,10 +98,10 @@ function ruleMGPCLinearGGDDD(   msg_out::Message{F1, Univariate},
     m_kappa = unsafeMean(dist_kappa)
     m_omega = unsafeMean(dist_omega)
 
-    gamma = clamp(exp(-m_kappa*m_v +(m_kappa^2)*v_v/2 - m_omega),tiny, huge)
+    gamma = exp(-m_kappa*m_v +(m_kappa^2)*v_v/2 - m_omega)
     q_W = [w_out+gamma -gamma; -gamma w_mean+gamma]
     q_xi = [xi_out; xi_mean]
-    # println("marginals")
-    # println(q_W, " ", q_xi )
+    println("marginals")
+    println(q_W," ", gamma)
     return ProbabilityDistribution(Multivariate, GaussianWeightedMeanPrecision, xi=q_xi, w=q_W)
 end
