@@ -1,7 +1,15 @@
-@naiveVariationalRule(:node_type       => GPCLinear,
-                      :outbound_type   => Message{Gaussian},
-                      :inbound_types   =>(Nothing,ProbabilityDistribution,ProbabilityDistribution,ProbabilityDistribution,ProbabilityDistribution),
-                      :name            =>VBGPCLinearOutVPP)
+@naiveVariationalRule(:node_type    => GPCLinear,
+                      :outbound_type=> Message{Gaussian},
+                      :inbound_types=> (Nothing, ProbabilityDistribution,ProbabilityDistribution,ProbabilityDistribution,ProbabilityDistribution),
+                      :name         => VBGPCLinearOutVGGPP)
+@naiveVariationalRule(:node_type    => GPCLinear,
+                      :outbound_type=> Message{Gaussian},
+                      :inbound_types=> (ProbabilityDistribution,Nothing,ProbabilityDistribution,ProbabilityDistribution,ProbabilityDistribution),
+                      :name         => VBGPCLinearMeanGVGPP)
+@naiveVariationalRule(:node_type    => GPCLinear,
+                      :outbound_type=> Message{Gaussian},
+                      :inbound_types=> (ProbabilityDistribution,ProbabilityDistribution,Nothing,ProbabilityDistribution,ProbabilityDistribution),
+                      :name         => VBGPCLinearVarGGVPP)
 
 @structuredVariationalRule(:node_type     => GPCLinear,
                            :outbound_type => Message{Gaussian},
