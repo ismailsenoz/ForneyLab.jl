@@ -23,7 +23,7 @@ mutable struct GPCLinearExtended<: SoftFactor
     interfaces::Vector{Interface}
     i::Dict{Symbol,Interface}
 
-    function GPCLinearExtended(out, m, v, kappa, omega; id=generateId(GPC))
+    function GPCLinearExtended(out, m, v, kappa, omega; id=generateId(GPCLinearExtended))
         @ensureVariables(out, m, v, kappa, omega)
         self = new(id, Array{Interface}(undef, 5), Dict{Symbol,Interface}())
         addNode!(currentGraph(), self)
