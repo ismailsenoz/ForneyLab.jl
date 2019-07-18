@@ -69,8 +69,7 @@ function ruleSVBGPCLinearExtendedOutVGGPP(msg_out::Nothing,
     v_mean = d_mean.params[:v]
     m_kappa = dist_kappa.params[:m]
     m_omega = dist_omega.params[:m]
-    gamma = exp(m_kappa*m_v - (m_kappa^2)*v_v/2 + m_omega)
-    # @show gamma = exp(m_kappa*m_v  + m_omega)
+    gamma = exp(m_kappa*m_v +m_omega - (m_kappa^2)*v_v/2 )
     Message(GaussianMeanVariance, m=m_mean,  v=v_mean + gamma)
 end
 
@@ -87,8 +86,7 @@ function ruleSVBGPCLinearExtendedMeanGVGPP(msg_out::Message{F,Univariate},
     v_v = unsafeCov(dist_v)
     m_kappa = dist_kappa.params[:m]
     m_omega = dist_omega.params[:m]
-    # @show gamma = exp(m_kappa*m_v + m_omega)
-    gamma = exp(m_kappa*m_v - (m_kappa^2)*v_v/2 + m_omega)
+    gamma = exp(m_kappa*m_v + m_omega - (m_kappa^2)*v_v/2 )
     Message(GaussianMeanVariance, m=m_out,  v=v_out + gamma)
 end
 
@@ -107,69 +105,52 @@ function ruleSVBGPCLinearExtendedVarGVPP(dist_out_mean::ProbabilityDistribution{
 end
 
 
-
 function ruleMGPCLinearExtendedGGDDD(msg_out::Message{F1, Univariate},
                         msg_m::Message{F2, Univariate},
                         dist_v::ProbabilityDistribution{Univariate, F3},
                         dist_kappa::ProbabilityDistribution{Univariate},
                         dist_omega::ProbabilityDistribution{Univariate}) where {F1<:Gaussian,F2<:Gaussian,F3<:Gaussian}
-    println("Marginal calculation for GPC")
-    d_out = convert(ProbabilityDistribution{Univariate,GaussianWeightedMeanPrecision},msg_out.dist)
-    d_mean = convert(ProbabilityDistribution{Univariate,GaussianWeightedMeanPrecision},msg_m.dist)
+    d_out = convert(ProbabilityDistribution{Univariate,GaussianMeanVariance},msg_out.dist)
+    d_mean = convert(ProbabilityDistribution{Univariate,GaussianMeanVariance},msg_m.dist)
 
-    xi_mean = d_mean.params[:xi]
-    w_mean = d_mean.params[:w]
-    xi_out = d_out.params[:xi]
-    w_out = d_out.params[:w]
+    m_mean = d_mean.params[:m]
+    v_mean = d_mean.params[:v]
+    m_out = d_out.params[:m]
+    v_out = d_out.params[:v]
     (m_v, v_v) =  unsafeMeanCov(dist_v)
     m_kappa = unsafeMean(dist_kappa)
     m_omega = unsafeMean(dist_omega)
 
-    @show gamma = exp(-m_kappa*m_v + (m_kappa^2)*v_v/2 - m_omega)
-    # gamma = exp(-m_kappa*m_v - m_omega)
-    @show q_W = [w_out+(gamma) -gamma; -gamma w_mean+(gamma)]
+    gamma = exp(m_kappa*m_v - (m_kappa^2)*v_v/2 + m_omega)
+    V = pinv([1/gamma + 1/v_out -1/gamma; -1/gamma 1/gamma + 1/v_mean])
+    m = V*[m_mean*v_mean; m_out*v_out]
 
-
-    q_xi = [xi_out; xi_mean]
-    return ProbabilityDistribution(Multivariate, GaussianWeightedMeanPrecision, xi=q_xi, w=q_W)
+    return ProbabilityDistribution(Multivariate, GaussianMeanVariance, m=m, v=V)
 end
 
-# function collectStructuredVariationalNodeInbounds(::GPCLinearExtended, entry::ScheduleEntry, interface_to_msg_idx::Dict{Interface, Int})
-#     # Collect inbounds
-#     inbounds = String[]
-#     entry_recognition_factor_id = recognitionFactorId(entry.interface.edge)
-#     local_cluster_ids = localRecognitionFactorization(entry.interface.node)
+###Working example for weighted mean precision updates
+# function ruleMGPCLinearExtendedGGDDD(msg_out::Message{F1, Univariate},
+#                         msg_m::Message{F2, Univariate},
+#                         dist_v::ProbabilityDistribution{Univariate, F3},
+#                         dist_kappa::ProbabilityDistribution{Univariate},
+#                         dist_omega::ProbabilityDistribution{Univariate}) where {F1<:Gaussian,F2<:Gaussian,F3<:Gaussian}
+#     println("Marginal calculation for GPC")
+#     d_out = convert(ProbabilityDistribution{Univariate,GaussianWeightedMeanPrecision},msg_out.dist)
+#     d_mean = convert(ProbabilityDistribution{Univariate,GaussianWeightedMeanPrecision},msg_m.dist)
 #
-#     recognition_factor_ids = Symbol[] # Keep track of encountered recognition factor ids
-#     for node_interface in entry.interface.node.interfaces
-#         inbound_interface = ultimatePartner(node_interface)
-#         partner_node = inbound_interface.node
-#         node_interface_recognition_factor_id = recognitionFactorId(node_interface.edge)
+#     xi_mean = d_mean.params[:xi]
+#     w_mean = d_mean.params[:w]
+#     xi_out = d_out.params[:xi]
+#     w_out = d_out.params[:w]
+#     (m_v, v_v) =  unsafeMeanCov(dist_v)
+#     m_kappa = unsafeMean(dist_kappa)
+#     m_omega = unsafeMean(dist_omega)
 #
-#         if node_interface == entry.interface
-#             # Ignore marginal of outbound edge
-#             # push!(inbounds, "nothing")
-#             if entry.msg_update_rule == SVBGPCLinearExtendedVarGVPPP
-#                 inbound_idx = interface_to_msg_idx[entry.interface]
-#                 push!(inbounds, "messages[$inbound_idx-1]")
-#             else
-#                 push!(inbounds, "nothing")
-#             end
-#         elseif isa(partner_node, Clamp)
-#             # Hard-code marginal of constant node in schedule
-#             push!(inbounds, marginalString(partner_node))
-#         elseif node_interface_recognition_factor_id == entry_recognition_factor_id
-#             # Collect message from previous result
-#             inbound_idx = interface_to_msg_idx[inbound_interface]
-#             push!(inbounds, "messages[$inbound_idx]")
-#         elseif !(node_interface_recognition_factor_id in recognition_factor_ids)
-#             # Collect marginal from marginal dictionary (if marginal is not already accepted)
-#             marginal_idx = local_cluster_ids[node_interface_recognition_factor_id]
-#             push!(inbounds, "marginals[:$marginal_idx]")
-#         end
+#     @show gamma = exp(-m_kappa*m_v + (m_kappa^2)*v_v/2 - m_omega)
+#     # gamma = exp(-m_kappa*m_v - m_omega)
+#     @show q_W = [w_out+(gamma) -gamma; -gamma w_mean+(gamma)]
 #
-#         push!(recognition_factor_ids, node_interface_recognition_factor_id)
-#     end
 #
-#     return inbounds
+#     q_xi = [xi_out; xi_mean]
+#     return ProbabilityDistribution(Multivariate, GaussianWeightedMeanPrecision, xi=q_xi, w=q_W)
 # end

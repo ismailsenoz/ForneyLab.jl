@@ -49,11 +49,11 @@ function averageEnergy(::Type{GPCLinearExtended}, marg_out_mean::ProbabilityDist
     (m_var,v_var) = unsafeMeanCov(marg_var)
     m_kappa = marg_kappa.params[:m]
     m_omega = marg_omega.params[:m]
-    gamma = exp(m_kappa*m_var+m_omega-(m_kappa^2)*v_var/2)
+    gamma = exp(m_kappa*m_var+m_omega)
 
     0.5*log(2*pi) +
     0.5*(m_kappa*m_var+m_omega) +
-    0.5*gamma*(v_out_mean[1,1]-v_out_mean[1,2]-v_out_mean[2,1]+v_out_mean[2,2]+ (m_out_mean[1]-m_out_mean[2])^2)
+    0.5*1/gamma*(v_out_mean[1,1]-v_out_mean[1,2]-v_out_mean[2,1]+v_out_mean[2,2]+ (m_out_mean[1]-m_out_mean[2])^2)
 end
 
 #avarage energy functional for mean field factorizatino
