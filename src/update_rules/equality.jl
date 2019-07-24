@@ -17,6 +17,26 @@ mutable struct SPEqualityGaussian <: SumProductRule{Equality} end
 outboundType(::Type{SPEqualityGaussian}) = Message{GaussianWeightedMeanPrecision}
 isApplicable(::Type{SPEqualityGaussian}, input_types::Vector{Type}) = matchPermutedCanonical(input_types, Message{Gaussian})
 
+mutable struct SPEqualityILE <: SumProductRule{Equality} end
+outboundType(::Type{SPEqualityILE}) = Message{Gaussian}
+function isApplicable(::Type{SPEqualityILE}, input_types::Vector{Type})
+    return (input_types == [Nothing, Message{InverseLinearExponential}, Message{InverseLinearExponential}]) ||
+    (input_types == [Message{InverseLinearExponential}, Nothing, Message{InverseLinearExponential}]) ||
+    (input_types == [Message{InverseLinearExponential}, Message{InverseLinearExponential}, Nothing])
+end
+
+mutable struct SPEqualityGaussianILE <: SumProductRule{Equality} end
+outboundType(::Type{SPEqualityGaussianILE}) = Message{Gaussian}
+function isApplicable(::Type{SPEqualityGaussianILE}, input_types::Vector{Type})
+    return (input_types == [Nothing, Message{Gaussian}, Message{InverseLinearExponential}]) ||
+    (input_types == [Nothing, Message{InverseLinearExponential}, Message{Gaussian}]) ||
+    (input_types == [Message{InverseLinearExponential}, Message{Gaussian},Nothing]) ||
+    (input_types == [Message{InverseLinearExponential}, Nothing, Message{Gaussian}]) ||
+    (input_types == [Message{Gaussian}, Nothing, Message{InverseLinearExponential}]) ||
+    (input_types == [Message{Gaussian}, Message{InverseLinearExponential}, Nothing])
+end
+
+
 mutable struct SPEqualityGammaWishart <: SumProductRule{Equality} end
 outboundType(::Type{SPEqualityGammaWishart}) = Message{Union{Gamma, Wishart}}
 isApplicable(::Type{SPEqualityGammaWishart}, input_types::Vector{Type}) = matchPermutedCanonical(input_types, Message{Union{Gamma, Wishart}})

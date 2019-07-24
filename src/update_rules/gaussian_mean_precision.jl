@@ -51,3 +51,13 @@
 @marginalRule(:node_type => GaussianMeanPrecision,
               :inbound_types => (Message{Gaussian}, Message{Gaussian}, ProbabilityDistribution),
               :name => MGaussianMeanPrecisionGGD)
+
+
+@structuredVariationalRule(:node_type     => GaussianMeanPrecision,
+                        :outbound_type => Message{Gaussian},
+                        :inbound_types => (Message{LogLinearExponential},Nothing,ProbabilityDistribution),
+                        :name          => SVBGaussianMeanPrecisionMGVD)
+
+@marginalRule(:node_type => GaussianMeanPrecision,
+            :inbound_types => (Message{LogLinearExponential}, Message{Gaussian}, ProbabilityDistribution),
+            :name => MGaussianMeanPrecisionGGD)

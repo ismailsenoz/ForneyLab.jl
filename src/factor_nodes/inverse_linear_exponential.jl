@@ -50,8 +50,73 @@ dims(dist::ProbabilityDistribution{Univariate, InverseLinearExponential}) = 1
     return z
 end
 
+function prod!(x::ProbabilityDistribution{Univariate, InverseLinearExponential},
+                            y::ProbabilityDistribution{Univariate, InverseLinearExponential},
+                            z::ProbabilityDistribution{Univariate, GaussianMeanVariance}=ProbabilityDistribution(Univariate, GaussianMeanVariance, m=0.0, v=1.0))
+
+
+    @show m_kappa_x = x.params[:k]
+    @show m_omega_x = x.params[:w]
+    @show Psi_x = x.params[:psi]
+    @show m_kappa_y = y.params[:k]
+    @show m_omega_y = y.params[:w]
+    @show Psi_y = y.params[:psi]
+
+    @show mean = (log(m_kappa_x*Psi_x)+log(m_kappa_y*Psi_y)-log(m_kappa_x+m_kappa_y))/(m_kappa_x+m_kappa_y)
+    @show phi_x = exp(-m_kappa_x*Psi_x-m_omega_x) + tiny
+    @show phi_y = exp(-m_kappa_y*Psi_y-m_omega_y) + tiny
+    @show var = 1/((m_kappa_x^2*Psi_x)/phi_x + (m_kappa_y^2*Psi_y)/phi_y)
+    z.params[:m] = mean
+    z.params[:v] = var
+
+    return z
+end
+
+
 # using ForwardDiff
 # import Distributions
+#
+# function ILE(kappa,omega,psi)
+#     function ILE(x)
+#         phi = exp(kappa*x+omega)
+#         return  -0.5*(kappa*x+omega+psi/phi)
+#     end
+#     return ILE
+# end
+#
+# function laplace(f::function)
+#     sample = rand(Distributions.Normal(0,1),1)[1]
+#     second_derivative =
+#     mean = sample - ForwardDiff.derivative(f,sample)
+#     var = ForwardDiff.hessian(f,mean)
+#     return mean,var
+# end
+#
+# function prod!(x::ProbabilityDistribution{Univariate, InverseLinearExponential},
+#                             y::ProbabilityDistribution{Univariate, InverseLinearExponential},
+#                             z::ProbabilityDistribution{Univariate, GaussianMeanVariance}=ProbabilityDistribution(Univariate, GaussianMeanVariance, m=0.0, v=1.0))
+#
+#
+#     m_kappa_x = x.params[:k]
+#     m_omega_x = x.params[:w]
+#     Psi_x = x.params[:psi]
+#     m_kappa_y = y.params[:k]
+#     m_omega_y = y.params[:w]
+#     Psi_y = y.params[:psi]
+#
+#     (m_x,v_x) = laplace(ILE(m_kappa_x,m_omega_x,Psi_x))
+#     (m_y,v_y) = laplace(ILE(m_kappa_y,m_omega_y,Psi_y))
+#     var = 1/(1/v_y + 1/v_x)
+#     mean = var*(m_x/v_x + m_y/v_y)
+#     z.params[:m] = mean
+#     z.params[:v] = var
+#
+#     return z
+# end
+
+
+
+
 #
 # #differentiable reparameterization function for Gaussian
 # function g_func(epsilon, a, b)
@@ -90,130 +155,3 @@ end
 #     return a_t, b_t^2
 # end
 #
-# @symmetrical function prod!(x::ProbabilityDistribution{Univariate, InverseLinearExponential},
-#                             y::ProbabilityDistribution{Univariate, F},
-#                             z::ProbabilityDistribution{Univariate, GaussianMeanVariance}=ProbabilityDistribution(Univariate, GaussianMeanVariance, m=0.0, v=1.0)) where F<:Gaussian
-#
-#     (m_y, v_y) = unsafeMeanCov(y)
-#     m_kappa = x.params[:k]
-#     m_omega = x.params[:w]
-#     Psi = x.params[:psi]
-#
-#     fA(mu,v,s) = Distributions.pdf(Distributions.Normal(mu, v),s)
-#     log_fB(omega,kappa,psi,s) = -0.5*(kappa*s+omega) - 0.5*(psi/(exp(kappa*s+omega)))
-#     log_FA(s) = log(fA(m_y,v_y,s))
-#     log_FB(s) = log_fB(m_omega,m_kappa,Psi,s)
-#     (m_prior , v_prior) = (m_y, v_y)
-#     mean, var = gaussian_avi(log_FA, log_FB, m_prior , v_prior , 0.0001, 0.0000001, 50, 500)
-#
-#     z.params[:m] = mean
-#     z.params[:v] = var
-#
-#     return z
-# end
-#
-
-#
-#
-# @symmetrical function prod!(x::ProbabilityDistribution{Univariate, InverseLinearExponential},
-#                             y::ProbabilityDistribution{Univariate, F},
-#                             z::ProbabilityDistribution{Univariate, GaussianMeanVariance}=ProbabilityDistribution(Univariate, GaussianMeanVariance, m=0.0, v=1.0)) where F<:Gaussian
-#
-#     println("Inverse Linear Exp computations")
-#     (m_y, v_y) = unsafeMeanCov(y)
-#     m_kappa = x.params[:k]
-#     m_omega = x.params[:w]
-#     Psi = x.params[:psi]
-#     expansion_point = m_y + sqrt(v_y)*randn()
-#     phi = exp(m_kappa*expansion_point+m_omega)
-#     g = -0.5*((m_kappa*expansion_point+m_omega)+Psi/phi+ (expansion_point-m_y)^2/v_y)
-#     gprime = -0.5*(m_kappa -  Psi*m_kappa/phi +2*(expansion_point-m_y)/v_y)
-#     gdprime = -0.5*(m_kappa^2*Psi/phi+ 2/v_y)
-#     gddprime = -0.5*(-m_kappa^3*Psi/phi)
-#     var = -(1/gdprime)
-#     newton_update = -gprime/gdprime
-#     temp = 0.5*newton_update*(gddprime/gdprime)
-#     if  0.9 < abs(temp) < 1.1
-#         # println("Newton update")
-#         mean = expansion_point + newton_update
-#     else
-#         # println("Halley update")
-#         mean = expansion_point + newton_update*(1/(1+temp+1e-8))
-#     end
-#     mean = expansion_point + newton_update*(1/(1+temp+1e-8))
-#     temp = (1/(1+0.5*newton_update*gdprime/gprime))
-#     mean = expansion_point + newton_update
-#
-#     z.params[:m] = mean
-#     z.params[:v] = var
-#
-#     return z
-# end
-
-# @symmetrical function prod!(x::ProbabilityDistribution{Univariate, InverseLinearExponential},
-#                             y::ProbabilityDistribution{Univariate, F},
-#                             z::ProbabilityDistribution{Univariate, GaussianMeanVariance}=ProbabilityDistribution(Univariate, GaussianMeanVariance, m=0.0, v=1.0)) where F<:Gaussian
-#
-#     println("Inverse Linear Exp computations")
-#     (m_y, v_y) = unsafeMeanCov(y)
-#     m_kappa = x.params[:k]
-#     m_omega = x.params[:w]
-#     Psi = x.params[:psi]
-#     @show expansion_point = m_y + 1e-9*randn()
-#     @show phi = exp(m_kappa*expansion_point+m_omega)
-#     @show g = -0.5*((m_kappa*expansion_point+m_omega)+Psi/phi+ (expansion_point-m_y)^2/v_y)
-#     @show gprime = -0.5*(m_kappa -  Psi*m_kappa/phi +2*(expansion_point-m_y)/v_y)
-#     @show gdprime = -0.5*(m_kappa^2*Psi/phi+ 2/v_y)
-#     @show gddprime = -0.5*(-m_kappa^3*Psi/phi)
-#     @show var = -(1/gdprime)
-#     @show newton_update = -g/gprime
-#     @show temp = 0.5*newton_update*(gdprime/gprime)
-#     if  0.9 < abs(temp) < 1.1
-#         println("Newton update")
-#         @show mean = expansion_point + newton_update
-#     else
-#         println("Halley update")
-#         @show mean = expansion_point + newton_update*(1/(1+temp+1e-8))
-#     end
-#     # @show mean = expansion_point + newton_update*(1/(1+temp+1e-8))
-#     # @show temp = (1/(1+0.5*newton_update*gdprime/gprime))
-#     # @show mean = expansion_point + newton_update
-#
-#     z.params[:m] = mean
-#     z.params[:v] = var
-#
-#     return z
-# end
-
-
-# # Laplace
-# @symmetrical function prod!(x::ProbabilityDistribution{Univariate, InverseLinearExponential},
-#                             y::ProbabilityDistribution{Univariate, F},
-#                             z::ProbabilityDistribution{Univariate, GaussianMeanVariance}=ProbabilityDistribution(Univariate, GaussianMeanVariance, m=0.0, v=1.0)) where F<:Gaussian
-#
-#     println("Inverse Linear Exp computations")
-#     (m_y, v_y) = unsafeMeanCov(y)
-#     m_kappa = x.params[:k]
-#     m_omega = x.params[:w]
-#     Psi = x.params[:psi]
-#     @show expansion_point = m_y
-#     @show phi = exp(m_kappa*expansion_point+m_omega)
-#     @show g = -0.5*(m_kappa - Psi*m_kappa/phi + 2*(expansion_point - m_y)/v_y)
-#     @show gprime = -0.5*(m_kappa^2*Psi/phi+ 2/v_y)
-#     @show gdprime = -0.5*(-m_kappa^3*Psi/phi)
-#     @show var = -(1/gdprime)
-#     @show newton_update = -g/gprime
-#     @show temp = 0.5*newton_update*(gdprime/gprime)
-#     if  0.9 < abs(temp) < 1.1
-#         println("Newton update")
-#         @show mean = expansion_point + newton_update
-#     else
-#         println("Halley update")
-#         @show mean = expansion_point + newton_update*(1/(1+temp+1e-8))
-#     end
-#
-#     z.params[:m] = mean
-#     z.params[:v] = var
-#
-#     return z
-# end

@@ -1,4 +1,6 @@
 export
+ruleVBGPCLinearExtendedKappaPPPVG,
+ruleVBGPCLinearExtendedOmegaPPPGV,
 ruleVBGPCLinearExtendedOutVGGPP,
 ruleVBGPCLinearExtendedMeanGVGPP,
 ruleVBGPCLinearExtendedVarGGVPP,
@@ -7,6 +9,35 @@ ruleSVBGPCLinearExtendedMeanGVGPP,
 ruleSVBGPCLinearExtendedVarGVPP,
 ruleMGPCLinearExtendedGGDDD
 
+
+function ruleVBGPCLinearExtendedKappaPPPVG(dist_out::ProbabilityDistribution{Univariate,PointMass},
+                                           dist_mean::ProbabilityDistribution{Univariate,PointMass},
+                                           dist_v::ProbabilityDistribution{Univariate,PointMass},
+                                           msg_kappa::Nothing,
+                                           dist_omega::ProbabilityDistribution{Univariate})
+    m_out = dist_out.params[:m]
+    m_mean = dist_mean.params[:m]
+    m_v = dist_v.params[:m]
+    (m_omega, v_omega) = ForneyLab.unsafeMeanCov(dist_omega)
+    psi = exp(v_omega/2)*(m_out-m_mean)^2
+
+    Message(InverseLinearExponential,k=m_v,w=m_omega,psi=psi)
+end
+
+
+function ruleVBGPCLinearExtendedOmegaPPPGV(dist_out::ProbabilityDistribution{Univariate,PointMass},
+                                           dist_mean::ProbabilityDistribution{Univariate,PointMass},
+                                           dist_v::ProbabilityDistribution{Univariate,PointMass},
+                                           dist_kappa::ProbabilityDistribution{Univariate},
+                                           msg_omega::Nothing)
+    m_out = dist_out.params[:m]
+    m_mean = dist_mean.params[:m]
+    m_v = dist_v.params[:m]
+    (m_kappa, v_kappa) = ForneyLab.unsafeMeanCov(dist_kappa)
+    psi = exp(m_v^2*m_kappa/2)*(m_out-m_mean)^2
+
+    Message(InverseLinearExponential,k=1,w=m_v*m_kappa,psi=psi)
+end
 
 function ruleVBGPCLinearExtendedOutVGGPP(msg_out::Nothing,
                                 dist_mean::ProbabilityDistribution{Univariate},

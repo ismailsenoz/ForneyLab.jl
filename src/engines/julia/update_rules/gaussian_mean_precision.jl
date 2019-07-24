@@ -109,6 +109,7 @@ function ruleMGaussianMeanPrecisionGGD(
     return ProbabilityDistribution(Multivariate, GaussianWeightedMeanPrecision, xi=[xi_y; xi_m], w=[W_y+W_bar -W_bar; -W_bar W_m+W_bar])
 end
 
+###HGF messages for gaussian mean precision node 
 
 function ruleSVBGaussianMeanPrecisionMGVD(  msg_out::Message{InverseLinearExponential},
                                             dist_mean::Any,
