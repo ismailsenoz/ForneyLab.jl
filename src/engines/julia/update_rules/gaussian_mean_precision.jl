@@ -9,7 +9,11 @@ ruleVBGaussianMeanPrecisionOut,
 ruleSVBGaussianMeanPrecisionOutVGD,
 ruleSVBGaussianMeanPrecisionW,
 ruleSVBGaussianMeanPrecisionMGVD,
-ruleMGaussianMeanPrecisionGGD
+ruleSVBGaussianMeanPrecisionIGVD,
+ruleSVBGaussianMeanPrecisionLGVD,
+ruleMGaussianMeanPrecisionGGD,
+ruleMGaussianMeanPrecisionLGD,
+ruleMGaussianMeanPrecisionIGD
 
 ruleSPGaussianMeanPrecisionOutNPP(  msg_out::Nothing,
                                     msg_mean::Message{PointMass, V},
@@ -109,9 +113,9 @@ function ruleMGaussianMeanPrecisionGGD(
     return ProbabilityDistribution(Multivariate, GaussianWeightedMeanPrecision, xi=[xi_y; xi_m], w=[W_y+W_bar -W_bar; -W_bar W_m+W_bar])
 end
 
-###HGF messages for gaussian mean precision node 
+###HGF messages for gaussian mean precision node
 
-function ruleSVBGaussianMeanPrecisionMGVD(  msg_out::Message{InverseLinearExponential},
+function ruleSVBGaussianMeanPrecisionIGVD(  msg_out::Message{InverseLinearExponential},
                                             dist_mean::Any,
                                             dist_prec::ProbabilityDistribution)
 
@@ -135,7 +139,7 @@ function ruleSVBGaussianMeanPrecisionMGVD(  msg_out::Message{InverseLinearExpone
     Message(Univariate,GaussianMeanVariance, m=mean, v=var+cholinv(unsafeMean(dist_prec)))
 end
 
-function ruleMGaussianMeanPrecisionGGD(
+function ruleMGaussianMeanPrecisionIGD(
     msg_out::Message{InverseLinearExponential},
     msg_mean::Message{F1, V},
     dist_prec::ProbabilityDistribution) where {F1<:Gaussian, V<:VariateType}
@@ -154,7 +158,7 @@ function ruleMGaussianMeanPrecisionGGD(
     return ProbabilityDistribution(Multivariate, GaussianWeightedMeanPrecision, xi=[xi_y; xi_m], w=[W_y+W_bar -W_bar; -W_bar W_m+W_bar])
 end
 
-function ruleSVBGaussianMeanPrecisionMGVD(  msg_out::Message{LogLinearExponential},
+function ruleSVBGaussianMeanPrecisionLGVD(  msg_out::Message{LogLinearExponential},
                                             dist_mean::Any,
                                             dist_prec::ProbabilityDistribution)
 
@@ -178,7 +182,7 @@ function ruleSVBGaussianMeanPrecisionMGVD(  msg_out::Message{LogLinearExponentia
     Message(Univariate,GaussianMeanVariance, m=mean, v=var+cholinv(unsafeMean(dist_prec)))
 end
 
-function ruleMGaussianMeanPrecisionGGD(
+function ruleMGaussianMeanPrecisionLGD(
     msg_out::Message{LogLinearExponential},
     msg_mean::Message{F1, V},
     dist_prec::ProbabilityDistribution) where {F1<:Gaussian, V<:VariateType}

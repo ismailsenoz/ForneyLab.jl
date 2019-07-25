@@ -70,3 +70,19 @@ function averageEnergy(::Type{GPCLinearExtended}, marg_out::ProbabilityDistribut
     0.5*(m_kappa*m_var+m_omega) +
     0.5*1/gamma*(v_out+ (m_out-m_mean)^2)
 end
+
+function averageEnergy(::Type{GPCLinearExtended}, marg_out::ProbabilityDistribution{Univariate,PointMass},marg_mean::ProbabilityDistribution{Univariate,PointMass},marg_var::ProbabilityDistribution{Univariate,PointMass},
+                        marg_kappa::ProbabilityDistribution{Univariate, F1},marg_omega::ProbabilityDistribution{Univariate,F2}) where {F1<:Gaussian, F2<:Gaussian}
+    (m_out) = marg_out.params[:m]
+    (m_mean) = marg_mean.params[:m]
+    (m_var) = marg_var.params[:m]
+    (m_kappa, v_kappa) = ForneyLab.unsafeMeanCov(marg_kappa)
+    (m_omega, v_omega) = ForneyLab.unsafeMeanCov(marg_omega)
+    psi = (m_out-m_mean)^2
+    phi1 = exp(m_kappa*m_var -m_var^2*v_kappa/2)
+    phi2 = exp(m_omega - v_omega/2)
+
+    0.5*log(2*pi) +
+    0.5*(m_kappa*m_var+m_omega) +
+    0.5*(psi/(phi1*phi2))
+end
