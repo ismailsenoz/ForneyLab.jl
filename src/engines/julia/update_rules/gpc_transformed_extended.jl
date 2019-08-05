@@ -153,7 +153,7 @@ function ruleMGPCLinearExtendedGGDDD(msg_out::Message{F1, Univariate},
     m_omega = unsafeMean(dist_omega)
 
     gamma = exp(m_kappa*m_v - (m_kappa^2)*v_v/2 + m_omega)
-    V = pinv([1/gamma + 1/v_out -1/gamma; -1/gamma 1/gamma + 1/v_mean])
+    V = pinv([1/gamma+1/v_out -1/gamma; -1/gamma 1/gamma + 1/v_mean])
     m = V*[m_mean*v_mean; m_out*v_out]
 
     return ProbabilityDistribution(Multivariate, GaussianMeanVariance, m=m, v=V)
