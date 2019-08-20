@@ -36,6 +36,16 @@ function isApplicable(::Type{SPEqualityGaussianILE}, input_types::Vector{Type})
     (input_types == [Message{Gaussian}, Message{InverseLinearExponential}, Nothing])
 end
 
+mutable struct SPEqualityGaussianLDT <: SumProductRule{Equality} end
+outboundType(::Type{SPEqualityGaussianLDT}) = Message{Gaussian, Multivariate}
+function isApplicable(::Type{SPEqualityGaussianLDT}, input_types::Vector{Type})
+    return (input_types == [Nothing, Message{Gaussian,Multivariate}, Message{LogDetTrace}]) ||
+    (input_types == [Nothing, Message{LogDetTrace}, Message{Gaussian,Multivariate}]) ||
+    (input_types == [Message{LogDetTrace}, Message{Gaussian,Multivariate},Nothing]) ||
+    (input_types == [Message{LogDetTrace}, Nothing, Message{Gaussian,Multivariate}]) ||
+    (input_types == [Message{Gaussian,Multivariate}, Nothing, Message{LogDetTrace}]) ||
+    (input_types == [Message{Gaussian,Multivariate}, Message{LogDetTrace}, Nothing])
+end
 
 mutable struct SPEqualityGammaWishart <: SumProductRule{Equality} end
 outboundType(::Type{SPEqualityGammaWishart}) = Message{Union{Gamma, Wishart}}

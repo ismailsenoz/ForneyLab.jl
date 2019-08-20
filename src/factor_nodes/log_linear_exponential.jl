@@ -57,6 +57,8 @@ end
 #     a_t = mu_prior
 #     b_t = sqrt(v_prior)
 #     for epoch2=1:num_epoch2
+#         sum_a = 0
+#         sum_b = 0
 #         for epoch=1:num_epoch
 #             message_6 = rand(Distributions.Normal(0,1),1)[1]
 #             epsilon = message_6
@@ -97,7 +99,7 @@ end
 #     log_FA(s) = log(fA(m_y,v_y,s))
 #     log_FB(s) = log_fB(m_omega,m_kappa,Psi,v_x,s)
 #     (m_prior , v_prior) = (m_y, v_y)
-#     mean, var = gaussian_avi(log_FA, log_FB, m_prior , v_prior, 0.0001, 0.0000001, 50, 500)
+#     mean, var = gaussian_avi(log_FA, log_FB, m_prior , v_prior, 0.0001, 0.0001, 50, 500)
 #
 #     z.params[:m] = mean
 #     z.params[:v] = var

@@ -200,3 +200,10 @@ function ruleMGaussianMeanPrecisionLGD(
 
     return ProbabilityDistribution(Multivariate, GaussianWeightedMeanPrecision, xi=[xi_y; xi_m], w=[W_y+W_bar -W_bar; -W_bar W_m+W_bar])
 end
+
+# function ruleSVBGaussianMeanPrecisionMLND(msg_out::Message{LogDetTrace},
+#                                           msg_mean::Nothing,
+#                                           dist_Prec::ProbabilityDistribution)
+#
+#
+#     return Message(Multivariate, GaussianMeanPrecision, m=, w= )

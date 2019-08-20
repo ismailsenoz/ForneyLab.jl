@@ -59,6 +59,9 @@ include("factor_nodes/dot_product.jl")
 include("factor_nodes/gpc_transformed_extended.jl")
 include("factor_nodes/inverse_linear_exponential.jl")
 include("factor_nodes/log_linear_exponential.jl")
+include("factor_nodes/gpc_multivariate.jl")
+include("factor_nodes/log_det_trace.jl")
+
 
 # Factor graph
 include("factor_graph.jl")
@@ -107,7 +110,7 @@ include("update_rules/dot_product.jl")
 # include("update_rules/gpc.jl")
 # include("update_rules/gpc_transformed.jl")
 include("update_rules/gpc_transformed_extended.jl")
-
+include("update_rules/gpc_multivariate.jl")
 *(x::ProbabilityDistribution, y::ProbabilityDistribution) = prod!(x, y) # * operator for probability distributions
 
 # include("docstrings.jl")
