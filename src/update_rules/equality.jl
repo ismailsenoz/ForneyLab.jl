@@ -37,14 +37,22 @@ function isApplicable(::Type{SPEqualityGaussianILE}, input_types::Vector{Type})
 end
 
 mutable struct SPEqualityGaussianLDT <: SumProductRule{Equality} end
-outboundType(::Type{SPEqualityGaussianLDT}) = Message{Gaussian, Multivariate}
-function isApplicable(::Type{SPEqualityGaussianLDT}, input_types::Vector{Type})
-    return (input_types == [Nothing, Message{Gaussian,Multivariate}, Message{LogDetTrace}]) ||
-    (input_types == [Nothing, Message{LogDetTrace}, Message{Gaussian,Multivariate}]) ||
-    (input_types == [Message{LogDetTrace}, Message{Gaussian,Multivariate},Nothing]) ||
-    (input_types == [Message{LogDetTrace}, Nothing, Message{Gaussian,Multivariate}]) ||
-    (input_types == [Message{Gaussian,Multivariate}, Nothing, Message{LogDetTrace}]) ||
-    (input_types == [Message{Gaussian,Multivariate}, Message{LogDetTrace}, Nothing])
+outboundType(::Type{SPEqualityGaussianLDT}) = Message{Gaussian}
+function isApplicable(::Type{SPEqualityGaussianLDT}, input_types::Vector{Type}) 
+    nothing_inputs = 0
+    gaussian_inputs = 0
+    log_det_inputs = 0
+    for input_type in input_types
+        if input_type == Nothing
+            nothing_inputs += 1
+        elseif matches(input_type, Message{Gaussian})
+            gaussian_inputs += 1
+        elseif matches(input_type, Message{LogDetTrace})
+            log_det_inputs += 1
+        end
+    end
+
+    return (nothing_inputs == 1) && (gaussian_inputs == 1) && (log_det_inputs == 1)
 end
 
 mutable struct SPEqualityGammaWishart <: SumProductRule{Equality} end

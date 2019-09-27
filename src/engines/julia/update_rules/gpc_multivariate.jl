@@ -110,6 +110,7 @@ function ruleMMultivariateGPCGGD(msg_out::Message{F1, Multivariate},
     return ProbabilityDistribution(Multivariate, GaussianWeightedMeanPrecision, xi=weighted_mean, w=lambda)
 end
 
+
 function collectStructuredVariationalNodeInbounds(node::MultivariateGPC, entry::ScheduleEntry, interface_to_msg_idx::Dict{Interface, Int})
     # Collect inbounds
     inbounds = String[]
