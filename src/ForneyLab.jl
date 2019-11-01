@@ -60,6 +60,8 @@ include("factor_nodes/nonlinear.jl")
 include("factor_nodes/dot_product.jl")
 include("factor_nodes/poisson.jl")
 include("factor_nodes/sample_list.jl")
+include("factor_nodes/gaussian_controlled_variance.jl")
+include("factor_nodes/exponential_linear_quadratic.jl")
 
 
 # Factor graph
@@ -116,6 +118,7 @@ include("update_rules/softmax.jl")
 include("update_rules/nonlinear.jl")
 include("update_rules/dot_product.jl")
 include("update_rules/poisson.jl")
+include("update_rules/gaussian_controlled_variance.jl")
 
 *(x::ProbabilityDistribution, y::ProbabilityDistribution) = prod!(x, y) # * operator for probability distributions
 

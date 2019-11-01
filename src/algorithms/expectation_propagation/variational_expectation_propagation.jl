@@ -4,8 +4,8 @@ variationalExpectationPropagationAlgorithm
 """
 Create a variational EP algorithm to infer marginals over a posterior distribution, and compile it to Julia code
 """
-function variationalExpectationPropagationAlgorithm(pfz::PosteriorFactorization=currentPosteriorFactorization(); 
-                                                    id=Symbol(""), 
+function variationalExpectationPropagationAlgorithm(pfz::PosteriorFactorization=currentPosteriorFactorization();
+                                                    id=Symbol(""),
                                                     free_energy=false)
 
     (length(pfz.posterior_factors) > 0) || error("No factors defined on posterior factorization.")

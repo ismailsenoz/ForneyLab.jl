@@ -38,7 +38,7 @@ end
 
 slug(::Type{ExponentialLinearQuadratic}) = "ELQ"
 
-format(dist::ProbabilityDistribution{ExponentialLinearQuadratic}) = "$(slug(ExponentialLinearQuadratic))(a=$(format(dist.params[:a])), b=$(format(dist.params[:b])), c=$(format(dist.params[:c])),d=$(format(dist.params[:d])))"
+format(dist::ProbabilityDistribution{Univariate, ExponentialLinearQuadratic}) = "$(slug(ExponentialLinearQuadratic))(a=$(format(dist.params[:a])), b=$(format(dist.params[:b])), c=$(format(dist.params[:c])), d=$(format(dist.params[:d])))"
 
 ProbabilityDistribution(::Type{Univariate}, ::Type{ExponentialLinearQuadratic}; a=1.0,b=1.0,c=1.0,d=1.0)= ProbabilityDistribution{Univariate, ExponentialLinearQuadratic}(Dict(:a=>a, :b=>b, :c=>c, :d=>d))
 ProbabilityDistribution(::Type{ExponentialLinearQuadratic}; a=1.0,b=1.0,c=1.0,d=1.0) = ProbabilityDistribution{Univariate, ExponentialLinearQuadratic}(Dict(:a=>a, :b=>b, :c=>c, :d=>d))
@@ -47,9 +47,9 @@ using FastGaussQuadrature
 using LinearAlgebra
 using ForwardDiff
 
-@symmetric function prod!(x::ProbabilityDistribution{Univariate, ExponentialLinearQuadratic},
-                y::ProbabilityDistribution{Univariate,Gaussian},
-                z::ProbabilityDistribution{Univariate, Gaussian}=ProbabilityDistribution(Univariate, GaussianMeanVariance, m=0.0,v=1.0))
+@symmetrical function prod!(x::ProbabilityDistribution{Univariate, ExponentialLinearQuadratic},
+                y::ProbabilityDistribution{Univariate, F1},
+                z::ProbabilityDistribution{Univariate, GaussianMeanVariance}=ProbabilityDistribution(Univariate, GaussianMeanVariance, m=0.0,v=1.0)) where F1<:Gaussian
 
     dist_y = convert(ProbabilityDistribution{Univariate, GaussianMeanVariance}, y)
     m_y, v_y = unsafeMeanCov(dist_y)
@@ -59,10 +59,10 @@ using ForwardDiff
     d = x.params[:d]
     p = 10
 
-    g(x) = exp(-0.5*(a*x+b*exp(cx+dx^2/2)))
+    g(x) = exp(-0.5*(a*x+b*exp(c*x+d*x^2/2)))
     normalization_constant = quadrature(g,dist_y,p)
     t(x) = x*g(x)/normalization_constant
-    mean = qudrature(t,dist_y,p)
+    mean = quadrature(t,dist_y,p)
     s(x) = (x-mean)^2*g(x)/normalization_constant
     var = quadrature(s,dist_y,p)
 
@@ -72,7 +72,7 @@ using ForwardDiff
     return z
 end
 
-# @symmetric function prod!(x::ProbabilityDistribution{Univariate, ExponentialLinearQuadratic},
+# @symmetrical function prod!(x::ProbabilityDistribution{Univariate, ExponentialLinearQuadratic},
 #                 y::ProbabilityDistribution{Univariate,Gaussian},
 #                 z::ProbabilityDistribution{Univariate, Gaussian}=ProbabilityDistribution(Univariate, GaussianMeanVariance, m=0.0,v=1.0))
 #
@@ -98,7 +98,7 @@ end
 #     return z
 # end
 
-# @symmetric function prod!(x::ProbabilityDistribution{Univariate, ExponentialLinearQuadratic},
+# @symmetrical function prod!(x::ProbabilityDistribution{Univariate, ExponentialLinearQuadratic},
 #                 y::ProbabilityDistribution{Univariate,Gaussian},
 #                 z::ProbabilityDistribution{Univariate, Gaussian}=ProbabilityDistribution(Univariate, GaussianMeanVariance, m=0.0,v=1.0))
 #
@@ -127,7 +127,7 @@ function quadrature(g::Function,d::ProbabilityDistribution{Univariate,GaussianMe
     m, v = unsafeMeanCov(d)
     result = 0.0
     for i=1:p
-        results += sigma_weights[i]*g(m+sqrt(v)*sigma_points[i])
+        result += sigma_weights[i]*g(m+sqrt(v)*sigma_points[i])
     end
 
     return result

@@ -57,9 +57,9 @@ function ruleSVBGaussianControlledVarianceXGNDDD(msg_out::Message{F, Univariate}
                                                    dist_κ::ProbabilityDistribution{Univariate},
                                                    dist_ω::ProbabilityDistribution{Univariate}) where F<:Gaussian
 
-    dist_y = convert(ProbabilityDistribution{Univariate,GaussianMeanVariance},msg_y.dist)
-    m_y = dist_y.params[:m]
-    v_y = dist_y.params[:v]
+    dist_out = convert(ProbabilityDistribution{Univariate,GaussianMeanVariance},msg_out.dist)
+    m_out = dist_out.params[:m]
+    v_out = dist_out.params[:v]
     m_z, v_z = unsafeMeanCov(dist_z)
     m_κ, v_κ = unsafeMeanCov(dist_κ)
     m_ω, v_ω = unsafeMeanCov(dist_ω)
@@ -68,53 +68,49 @@ function ruleSVBGaussianControlledVarianceXGNDDD(msg_out::Message{F, Univariate}
     A = exp(-m_ω+v_ω/2)
     B = exp(-m_κ*m_z + ksi/2)
 
-    return Message(Univariate, GaussianMeanVariance, m=m_y, v=v_y+inv(A*B))
+    return Message(Univariate, GaussianMeanVariance, m=m_out, v=v_out+inv(A*B))
 end
 
-function ruleSVBGaussianControlledVarianceZDNDD(dist_out_x::ProbabilityDistribution{F, Multivariate},
-                                                   dist_z::Nothing,
-                                                   dist_κ::ProbabilityDistribution{Univariate},
-                                                   dist_ω::ProbabilityDistribution{Univariate}) where F<:Gaussian
+function ruleSVBGaussianControlledVarianceZDNDD(dist_out_x::ProbabilityDistribution{Multivariate, F},
+                                                dist_z::Nothing,
+                                                dist_κ::ProbabilityDistribution{Univariate},
+                                                dist_ω::ProbabilityDistribution{Univariate}) where F<:Gaussian
 
-    dist_out_x = convert(ProbabilityDistribution{Univariate,GaussianMeanVariance},dist_out_x)
+    dist_out_x = convert(ProbabilityDistribution{Multivariate,GaussianMeanVariance},dist_out_x)
     m = dist_out_x.params[:m]
     v = dist_out_x.params[:v]
     m_κ, v_κ = unsafeMeanCov(dist_κ)
     m_ω, v_ω = unsafeMeanCov(dist_ω)
 
     Psi = (m[1]-m[2])^2+v[1,1]+v[2,2]-v[1,2]-v[2,1]
-    ksi = m_κ^2*v_z + m_z^2*v_κ+v_z*v_κ
     A = exp(-m_ω+v_ω/2)
-    B = exp(-m_κ*m_z + ksi/2)
 
     return Message(Univariate, ExponentialLinearQuadratic, a=m_κ, b=Psi*A,c=-m_κ,d=v_κ)
 end
 
-function ruleSVBGaussianControlledVarianceΚDDND(dist_out_x::ProbabilityDistribution{F, Multivariate},
+function ruleSVBGaussianControlledVarianceΚDDND(dist_out_x::ProbabilityDistribution{Multivariate, F},
                                                    dist_z::ProbabilityDistribution{Univariate},
                                                    dist_κ::Nothing,
                                                    dist_ω::ProbabilityDistribution{Univariate}) where F<:Gaussian
 
-    dist_out_x = convert(ProbabilityDistribution{Univariate,GaussianMeanVariance},dist_out_x)
+    dist_out_x = convert(ProbabilityDistribution{Multivariate,GaussianMeanVariance},dist_out_x)
     m = dist_out_x.params[:m]
     v = dist_out_x.params[:v]
     m_z, v_z = unsafeMeanCov(dist_z)
     m_ω, v_ω = unsafeMeanCov(dist_ω)
 
     Psi = (m[1]-m[2])^2+v[1,1]+v[2,2]-v[1,2]-v[2,1]
-    ksi = m_κ^2*v_z + m_z^2*v_κ+v_z*v_κ
     A = exp(-m_ω+v_ω/2)
-    B = exp(-m_κ*m_z + ksi/2)
 
     return Message(Univariate, ExponentialLinearQuadratic, a=m_z, b=Psi*A,c=-m_z,d=v_z)
 end
 
-function ruleSVBGaussianControlledVarianceΩDDDN(dist_out_x::ProbabilityDistribution{F, Multivariate},
+function ruleSVBGaussianControlledVarianceΩDDDN(dist_out_x::ProbabilityDistribution{Multivariate, F},
                                                    dist_z::ProbabilityDistribution{Univariate},
                                                    dist_κ::ProbabilityDistribution{Univariate},
                                                    dist_ω::Nothing) where F<:Gaussian
 
-    dist_out_x = convert(ProbabilityDistribution{Univariate,GaussianMeanVariance},dist_out_x)
+    dist_out_x = convert(ProbabilityDistribution{Multivariate,GaussianMeanVariance},dist_out_x)
     m = dist_out_x.params[:m]
     v = dist_out_x.params[:v]
     m_z, v_z = unsafeMeanCov(dist_z)
@@ -131,7 +127,7 @@ function ruleMGaussianControlledVarianceGGDDD(msg_out::Message{F1, Univariate},
                                               msg_x::Message{F2, Univariate},
                                               dist_z::ProbabilityDistribution{Univariate},
                                               dist_κ::ProbabilityDistribution{Univariate},
-                                              dist_ω::ProbabilityDistribution{Univariate})
+                                              dist_ω::ProbabilityDistribution{Univariate}) where {F1 <: Gaussian, F2 <: Gaussian}
     dist_out = convert(ProbabilityDistribution{Univariate,GaussianMeanPrecision},msg_out.dist)
     dist_x = convert(ProbabilityDistribution{Univariate,GaussianMeanPrecision},msg_x.dist)
     m_x = dist_x.params[:m]
