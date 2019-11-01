@@ -38,13 +38,97 @@ end
 
 slug(::Type{ExponentialLinearQuadratic}) = "ELQ"
 
-# @symmetric function prod!(x::ProbabilityDistribution{Univariate, Bernoulli},
-#                 y::ProbabilityDistribution{Univariate, Bernoulli},
-#                 z::ProbabilityDistribution{Univariate, Bernoulli}=ProbabilityDistribution(Univariate, Bernoulli, p=0.5))
+format(dist::ProbabilityDistribution{ExponentialLinearQuadratic}) = "$(slug(ExponentialLinearQuadratic))(a=$(format(dist.params[:a])), b=$(format(dist.params[:b])), c=$(format(dist.params[:c])),d=$(format(dist.params[:d])))"
+
+ProbabilityDistribution(::Type{Univariate}, ::Type{ExponentialLinearQuadratic}; a=1.0,b=1.0,c=1.0,d=1.0)= ProbabilityDistribution{Univariate, ExponentialLinearQuadratic}(Dict(:a=>a, :b=>b, :c=>c, :d=>d))
+ProbabilityDistribution(::Type{ExponentialLinearQuadratic}; a=1.0,b=1.0,c=1.0,d=1.0) = ProbabilityDistribution{Univariate, ExponentialLinearQuadratic}(Dict(:a=>a, :b=>b, :c=>c, :d=>d))
+
+using FastGaussQuadrature
+using LinearAlgebra
+using ForwardDiff
+
+@symmetric function prod!(x::ProbabilityDistribution{Univariate, ExponentialLinearQuadratic},
+                y::ProbabilityDistribution{Univariate,Gaussian},
+                z::ProbabilityDistribution{Univariate, Gaussian}=ProbabilityDistribution(Univariate, GaussianMeanVariance, m=0.0,v=1.0))
+
+    dist_y = convert(ProbabilityDistribution{Univariate, GaussianMeanVariance}, y)
+    m_y, v_y = unsafeMeanCov(dist_y)
+    a = x.params[:a]
+    b = x.params[:b]
+    c = x.params[:c]
+    d = x.params[:d]
+    p = 10
+
+    g(x) = exp(-0.5*(a*x+b*exp(cx+dx^2/2)))
+    normalization_constant = quadrature(g,dist_y,p)
+    t(x) = x*g(x)/normalization_constant
+    mean = qudrature(t,dist_y,p)
+    s(x) = (x-mean)^2*g(x)/normalization_constant
+    var = quadrature(s,dist_y,p)
+
+    z.params[:m] = mean
+    z.params[:v] = var
+
+    return z
+end
+
+# @symmetric function prod!(x::ProbabilityDistribution{Univariate, ExponentialLinearQuadratic},
+#                 y::ProbabilityDistribution{Univariate,Gaussian},
+#                 z::ProbabilityDistribution{Univariate, Gaussian}=ProbabilityDistribution(Univariate, GaussianMeanVariance, m=0.0,v=1.0))
 #
-#     norm = x.params[:p] * y.params[:p] + (1 - x.params[:p]) * (1 - y.params[:p])
-#     (norm > 0) || error("Product of $(x) and $(y) cannot be normalized")
-#     z.params[:p] = (x.params[:p] * y.params[:p]) / norm
+#     dist_y = convert(ProbabilityDistribution{Univariate, GaussianMeanVariance}, y)
+#     m_y, v_y = unsafeMeanCov(dist_y)
+#     a = x.params[:a]
+#     b = x.params[:b]
+#     c = x.params[:c]
+#     d = x.params[:d]
+#     epsilon = 0.1
+#     g(x) = exp(-0.5*(a*x+b*exp(cx+dx^2/2)+(x-m_y)^2/v_y))
+#     for i=1:100
+#         gradient = ForwardDiff.gradient(g, m_y)
+#         hessian = ForwardDiff.hessian(g, m_y)
+#         var = -inv(hessian)
+#         mean = m_y + epsilon*var*gradient
+#         m_y = mean
+#     end
+#
+#     z.params[:m] = mean
+#     z.params[:v] = var
 #
 #     return z
 # end
+
+# @symmetric function prod!(x::ProbabilityDistribution{Univariate, ExponentialLinearQuadratic},
+#                 y::ProbabilityDistribution{Univariate,Gaussian},
+#                 z::ProbabilityDistribution{Univariate, Gaussian}=ProbabilityDistribution(Univariate, GaussianMeanVariance, m=0.0,v=1.0))
+#
+#     dist_y = convert(ProbabilityDistribution{Univariate, GaussianMeanVariance}, y)
+#     m_y, v_y = unsafeMeanCov(dist_y)
+#     a = x.params[:a]
+#     b = x.params[:b]
+#     c = x.params[:c]
+#     d = x.params[:d]
+#
+#     g(x) = exp(-0.5*(a*x+b*exp(cx+dx^2/2)))
+#
+#     samples = m_y .+ sqrt(v_y) .* randn(1000)
+#     mean = sum(g.(samples) ./ sum(g.(samples)) .* samples)
+#     var = sum(g.(samples) ./ sum(g.(samples)) .* (samples.-mean).^2)
+#     z.params[:m] = mean
+#     z.params[:v] = var
+#
+#     return z
+# end
+
+
+function quadrature(g::Function,d::ProbabilityDistribution{Univariate,GaussianMeanVariance},p::Int64)
+    sigma_points, sigma_weights = gausshermite(p)
+    sigma_weights = sigma_weights./ (sqrt(pi)*2^(p-1))
+    m, v = unsafeMeanCov(d)
+    result = 0.0
+    for i=1:p
+        results += sigma_weights[i]*g(m+sqrt(v)*sigma_points[i])
+    end
+
+    return result
+end
