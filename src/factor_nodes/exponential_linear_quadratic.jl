@@ -57,7 +57,7 @@ using ForwardDiff
     b = x.params[:b]
     c = x.params[:c]
     d = x.params[:d]
-    p = 10
+    p = 5
 
     g(x) = exp(-0.5*(a*x+b*exp(c*x+d*x^2/2)))
     normalization_constant = quadrature(g,dist_y,p)
@@ -73,8 +73,8 @@ using ForwardDiff
 end
 
 # @symmetrical function prod!(x::ProbabilityDistribution{Univariate, ExponentialLinearQuadratic},
-#                 y::ProbabilityDistribution{Univariate,Gaussian},
-#                 z::ProbabilityDistribution{Univariate, Gaussian}=ProbabilityDistribution(Univariate, GaussianMeanVariance, m=0.0,v=1.0))
+#                 y::ProbabilityDistribution{Univariate,F},
+#                 z::ProbabilityDistribution{Univariate, GaussianMeanVariance}=ProbabilityDistribution(Univariate, GaussianMeanVariance, m=0.0,v=1.0)) where F<:Gaussian
 #
 #     dist_y = convert(ProbabilityDistribution{Univariate, GaussianMeanVariance}, y)
 #     m_y, v_y = unsafeMeanCov(dist_y)
@@ -83,10 +83,12 @@ end
 #     c = x.params[:c]
 #     d = x.params[:d]
 #     epsilon = 0.1
-#     g(x) = exp(-0.5*(a*x+b*exp(cx+dx^2/2)+(x-m_y)^2/v_y))
+#     g(x) = exp(-0.5*(a*x+b*exp(c*x+d*x^2/2)+(x-m_y)^2/v_y))
+#     h(x) = ForwardDiff.derivative(g,x)
+#
 #     for i=1:100
-#         gradient = ForwardDiff.gradient(g, m_y)
-#         hessian = ForwardDiff.hessian(g, m_y)
+#         gradient = ForwardDiff.derivative(g, m_y)
+#         hessian = ForwardDiff.derivative(h, m_y)
 #         var = -inv(hessian)
 #         mean = m_y + epsilon*var*gradient
 #         m_y = mean
@@ -99,8 +101,8 @@ end
 # end
 
 # @symmetrical function prod!(x::ProbabilityDistribution{Univariate, ExponentialLinearQuadratic},
-#                 y::ProbabilityDistribution{Univariate,Gaussian},
-#                 z::ProbabilityDistribution{Univariate, Gaussian}=ProbabilityDistribution(Univariate, GaussianMeanVariance, m=0.0,v=1.0))
+#                 y::ProbabilityDistribution{Univariate,F},
+#                 z::ProbabilityDistribution{Univariate, GaussianMeanVariance}=ProbabilityDistribution(Univariate, GaussianMeanVariance, m=0.0,v=1.0)) where F <: Gaussian
 #
 #     dist_y = convert(ProbabilityDistribution{Univariate, GaussianMeanVariance}, y)
 #     m_y, v_y = unsafeMeanCov(dist_y)
@@ -109,7 +111,7 @@ end
 #     c = x.params[:c]
 #     d = x.params[:d]
 #
-#     g(x) = exp(-0.5*(a*x+b*exp(cx+dx^2/2)))
+#     g(x) = exp(-0.5*(a*x+b*exp(c*x+d*x^2/2)))
 #
 #     samples = m_y .+ sqrt(v_y) .* randn(1000)
 #     mean = sum(g.(samples) ./ sum(g.(samples)) .* samples)
