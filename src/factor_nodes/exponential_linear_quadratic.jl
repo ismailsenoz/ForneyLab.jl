@@ -2,9 +2,6 @@ export ExponentialLinearQuadratic
 
 """
 Description:
-
-
-
     f(out,a,b,c,d) = exp(-0.5(a*out + b*exp(cx+dx^2/2)))
 
 Interfaces:
@@ -14,7 +11,6 @@ Interfaces:
     3. b
     4. c
     5. d
-
 
 """
 mutable struct ExponentialLinearQuadratic<: SoftFactor
@@ -57,7 +53,7 @@ using ForwardDiff
     b = x.params[:b]
     c = x.params[:c]
     d = x.params[:d]
-    p = 5
+    p = 20
 
     g(x) = exp(-0.5*(a*x+b*exp(c*x+d*x^2/2)))
     normalization_constant = quadrature(g,dist_y,p)
@@ -77,25 +73,26 @@ end
 #                 z::ProbabilityDistribution{Univariate, GaussianMeanVariance}=ProbabilityDistribution(Univariate, GaussianMeanVariance, m=0.0,v=1.0)) where F<:Gaussian
 #
 #     dist_y = convert(ProbabilityDistribution{Univariate, GaussianMeanVariance}, y)
-#     m_y, v_y = unsafeMeanCov(dist_y)
+#     m_y = dist_y.params[:m]
+#     v_y = dist_y.params[:v]
 #     a = x.params[:a]
 #     b = x.params[:b]
 #     c = x.params[:c]
 #     d = x.params[:d]
-#     epsilon = 0.1
-#     g(x) = exp(-0.5*(a*x+b*exp(c*x+d*x^2/2)+(x-m_y)^2/v_y))
+#     g(x) = -0.5*(a*x+b*exp(c*x+d*x^2/2)+(x-m_y)^2/v_y)
 #     h(x) = ForwardDiff.derivative(g,x)
-#
-#     for i=1:100
-#         gradient = ForwardDiff.derivative(g, m_y)
-#         hessian = ForwardDiff.derivative(h, m_y)
-#         var = -inv(hessian)
-#         mean = m_y + epsilon*var*gradient
-#         m_y = mean
-#     end
-#
-#     z.params[:m] = mean
-#     z.params[:v] = var
+#     # var_z = 0.0
+#     # mean_z = 0.0
+#     # for i=1:100
+#     gradient = ForwardDiff.derivative(g, m_y)
+#     hessian = ForwardDiff.derivative(h, m_y)
+#     var_z = -inv(hessian)
+#     mean_z = m_y + var_z*gradient
+#     m_y = mean_z
+#     # end
+#     println(mean_z, " ", var_z)
+#     z.params[:m] = mean_z
+#     z.params[:v] = var_z
 #
 #     return z
 # end

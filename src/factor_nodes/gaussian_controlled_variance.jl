@@ -57,3 +57,43 @@ function averageEnergy(::Type{GaussianControlledVariance}, marg_out_x::Probabili
     return  -0.5log(2*pi) -0.5*(m_z*m_κ+m_ω) -0.5*(psi*A*B)
 
 end
+# Average energy functional
+function averageEnergy(::Type{GaussianControlledVariance}, marg_out_x::ProbabilityDistribution{Multivariate}, marg_z_κ::ProbabilityDistribution{Multivariate}, marg_ω::ProbabilityDistribution{Univariate})
+    m_out_x, cov_out_x = unsafeMeanCov(marg_out_x)
+    m_z_κ, var_z_κ = unsafeMeanCov(marg_z_κ)
+    m_ω, var_ω = unsafeMeanCov(marg_ω)
+
+    psi = (m_out_x[2]-m_out_x[1])^2 + cov_out_x[1,1]+cov_out_x[2,2]-cov_out_x[1,2]-cov_out_x[2,1]
+    A = exp(-m_ω + var_ω/2)
+    B = quadratureExpectationExp(marg_z_κ,10)
+    C = qudratureExpectationMultiplication(marg_z_κ,10)
+
+    return  -0.5log(2*pi) -0.5*(C+m_ω) -0.5*(psi*A*B)
+
+end
+
+using FastGaussQuadrature
+
+function quadratureExpectationExp(d::ProbabilityDistribution{Multivariate,GaussianMeanVariance},p::Int64)
+    sigma_points, sigma_weights = gausshermite(p)
+    sigma_weights = sigma_weights./ (sqrt(pi)*2^(p-1))
+    m, v = unsafeMeanCov(d)
+    result = 0.0
+    for i=1:p
+        result += sigma_weights[i]*exp((m[1]+sqrt(v[1,1])*sigma_points[i])*(m[2]+sqrt(v[2,2])*sigma_points[i]))
+    end
+
+    return result
+end
+
+function quadratureExpectationMultiplication(d::ProbabilityDistribution{Multivariate,GaussianMeanVariance},p::Int64)
+    sigma_points, sigma_weights = gausshermite(p)
+    sigma_weights = sigma_weights./ (sqrt(pi)*2^(p-1))
+    m, v = unsafeMeanCov(d)
+    result = 0.0
+    for i=1:p
+        result += sigma_weights[i]*(m[1]+sqrt(v[1,1])*sigma_points[i])*(m[2]+sqrt(v[2,2])*sigma_points[i])
+    end
+
+    return result
+end
