@@ -73,6 +73,7 @@ function averageEnergy(::Type{GaussianControlledVariance}, marg_out_x::Probabili
 end
 
 using FastGaussQuadrature
+using Zygote
 
 function quadratureExpectationExp(d::ProbabilityDistribution{Multivariate,GaussianMeanVariance},p::Int64)
     sigma_points, sigma_weights = gausshermite(p)
@@ -96,4 +97,19 @@ function quadratureExpectationMultiplication(d::ProbabilityDistribution{Multivar
     end
 
     return result
+end
+
+function NewtonMethod(g::Function,x_0::Array{Float64},n_its::Int64)
+    dim = length(x_0)
+    x = zeros(dim)
+    var = zeros(dim,dim)
+    for i=1:n_its
+        grad = Zygote.gradient(g,x_0)
+        hessian = Zygote.hessian(g,x_0)
+        x = x_0 - inv(hessian)*grad[1]
+        var = -inv(hessian)
+        x_0 = x
+    end
+
+    return x, var
 end

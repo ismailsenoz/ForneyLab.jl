@@ -1,19 +1,17 @@
-    export
+export
 ruleSVBGaussianControlledVarianceOutNGDDD,
 ruleSVBGaussianControlledVarianceXGNDDD,
 ruleSVBGaussianControlledVarianceZDNDD,
 ruleSVBGaussianControlledVarianceΚDDND,
 ruleSVBGaussianControlledVarianceΩDDDN,
-ruleMGaussianControlledVarianceGGDDD,
-ruleSVBGaussianControlledVarianceOutNGDD,
-ruleSVBGaussianControlledVarianceXGNDD,
-ruleSVBGaussianControlledVarianceZDNGD,
-ruleSVBGaussianControlledVarianceΚDGND,
-ruleSVBGaussianControlledVarianceΩDDN,
-ruleMGaussianControlledVarianceGGDD,
-ruleMGaussianControlledVarianceDGGD
-
-
+ruleMGaussianControlledVarianceGGDDD
+# ruleSVBGaussianControlledVarianceOutNGDD,
+# ruleSVBGaussianControlledVarianceXGNDD,
+# ruleSVBGaussianControlledVarianceZDNGD,
+# ruleSVBGaussianControlledVarianceΚDGND,
+# ruleSVBGaussianControlledVarianceΩDDN,
+# ruleMGaussianControlledVarianceGGDD,
+# ruleMGaussianControlledVarianceDGGD
 
 function ruleSVBGaussianControlledVarianceOutNGDDD(dist_out::Nothing,
                                                    msg_x::Message{F, Univariate},
@@ -113,6 +111,29 @@ function ruleSVBGaussianControlledVarianceZDNDD(dist_out_x::ProbabilityDistribut
     return Message(Univariate, ExponentialLinearQuadratic, a=m_κ, b=Psi*A,c=-m_κ,d=v_κ)
 end
 
+#
+# function ruleSVBGaussianControlledVarianceZDNGD(dist_out_x::ProbabilityDistribution{Multivariate,F1},
+#                                                 msg_z::Nothing{F2,Univariate},
+#                                                 msg_κ::Message{F3,Univariate},
+#                                                 dist_ω::ProbabilityDistribution{Univariate}) where {F1<:Gaussian, F2<:Gaussian,F3<:Gaussian}
+#
+#     dist_out_x = convert(ProbabilityDistribution{Multivariate,GaussianMeanVariance},dist_out_x)
+#     m = dist_out_x.params[:m]
+#     v = dist_out_x.params[:v]
+#     m_κ, v_κ = unsafeMeanCov(msg_κ.dist)
+#     m_z, v_z = unsafeMeanCov(msg_z.dist)
+#     m_ω, v_ω = unsafeMeanCov(dist_ω)
+#
+#     Psi = (m[1]-m[2])^2+v[1,1]+v[2,2]-v[1,2]-v[2,1]
+#     A = exp(-m_ω+v_ω/2)
+#     h(x) = -0.5*x[1]*x[2]-0.5*A*Psi*exp(-x[1]*x[2])
+#     newton_m, newton_v = NewtonMethod(h,[m_κ; m_z],50)
+#
+#
+#     return Message(Univariate, GaussianMeanVariance, m= ,v= )
+# end
+
+
 function ruleSVBGaussianControlledVarianceΚDDND(dist_out_x::ProbabilityDistribution{Multivariate, F},
                                                    dist_z::ProbabilityDistribution{Univariate},
                                                    dist_κ::Nothing,
@@ -172,3 +193,38 @@ function ruleMGaussianControlledVarianceGGDDD(msg_out::Message{F1, Univariate},
     return ProbabilityDistribution(Multivariate, GaussianMeanPrecision, m=m, w=W)
 
 end
+
+
+# ###Custom inbounds
+# function collectStructuredVariationalNodeInbounds(::FactorNode, entry::ScheduleEntry, interface_to_msg_idx::Dict{Interface, Int})
+#     # Collect inbounds
+#     inbounds = String[]
+#     entry_recognition_factor_id = recognitionFactorId(entry.interface.edge)
+#     local_cluster_ids = localRecognitionFactorization(entry.interface.node)
+#
+#     recognition_factor_ids = Symbol[] # Keep track of encountered recognition factor ids
+#     for node_interface in entry.interface.node.interfaces
+#         inbound_interface = ultimatePartner(node_interface)
+#         node_interface_recognition_factor_id = recognitionFactorId(node_interface.edge)
+#
+#         if node_interface == entry.interface
+#             # Ignore marginal of outbound edge
+#             push!(inbounds, "nothing")
+#         elseif (inbound_interface != nothing) && isa(inbound_interface.node, Clamp)
+#             # Hard-code marginal of constant node in schedule
+#             push!(inbounds, marginalString(inbound_interface.node))
+#         elseif node_interface_recognition_factor_id == entry_recognition_factor_id
+#             # Collect message from previous result
+#             inbound_idx = interface_to_msg_idx[inbound_interface]
+#             push!(inbounds, "messages[$inbound_idx]")
+#         elseif !(node_interface_recognition_factor_id in recognition_factor_ids)
+#             # Collect marginal from marginal dictionary (if marginal is not already accepted)
+#             marginal_idx = local_cluster_ids[node_interface_recognition_factor_id]
+#             push!(inbounds, "marginals[:$marginal_idx]")
+#         end
+#
+#         push!(recognition_factor_ids, node_interface_recognition_factor_id)
+#     end
+#
+#     return inbounds
+# end
