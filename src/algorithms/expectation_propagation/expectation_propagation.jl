@@ -22,12 +22,19 @@ function expectationPropagationAlgorithm(variables::Vector{Variable};
     schedule = expectationPropagationSchedule(pf)
     pf.schedule = condense(flatten(schedule)) # Inline all internal message passing and remove clamp node entries
     pf.marginal_table = marginalTable(variables)
+<<<<<<< HEAD
     
     # Populate fields for algorithm compilation
     algo = InferenceAlgorithm(pfz, id=id)
     assembleInferenceAlgorithm!(algo)
     free_energy && assembleFreeEnergy!(algo)
     
+=======
+
+    algo = InferenceAlgorithm(pfz, id)
+    assembleInferenceAlgorithm!(algo)
+
+>>>>>>> finish update rules for q(x,kappa) and modifications to FL node and functions
     return algo
 end
 expectationPropagationAlgorithm(variable::Variable; id=Symbol(""), free_energy=false) = expectationPropagationAlgorithm([variable], id=id, free_energy=free_energy)
@@ -37,11 +44,17 @@ A non-specific expectation propagation update
 """
 abstract type ExpectationPropagationRule{factor_type} <: MessageUpdateRule end
 
-""" 
+"""
 `expectationPropagationSchedule()` generates a expectation propagation
+<<<<<<< HEAD
 message passing schedule. 
 """ 
 function expectationPropagationSchedule(pf::PosteriorFactor)
+=======
+message passing schedule.
+"""
+function expectationPropagationSchedule(variables::Vector{Variable})
+>>>>>>> finish update rules for q(x,kappa) and modifications to FL node and functions
     ep_sites = collectEPSites(nodes(current_graph))
     breaker_sites = Interface[site.partner for site in ep_sites]
     breaker_types = breakerTypes(breaker_sites)
@@ -102,7 +115,7 @@ function inferUpdateRule!(entry::ScheduleEntry,
 
     # Find outbound id
     outbound_id = something(findfirst(isequal(entry.interface), entry.interface.node.interfaces), 0)
-    
+
     # Find applicable rule(s)
     applicable_rules = Type[]
     for rule in leaftypes(entry.message_update_rule)
@@ -140,9 +153,9 @@ function collectInboundTypes(entry::ScheduleEntry,
 end
 
 """
-`@expectationPropagationRule` registers a expectation propagation update 
-rule by defining the rule type and the corresponding methods for the `outboundType` 
-and `isApplicable` functions. If no name (type) for the new rule is passed, a 
+`@expectationPropagationRule` registers a expectation propagation update
+rule by defining the rule type and the corresponding methods for the `outboundType`
+and `isApplicable` functions. If no name (type) for the new rule is passed, a
 unique name (type) will be generated. Returns the rule type.
 """
 macro expectationPropagationRule(fields...)
@@ -182,7 +195,7 @@ macro expectationPropagationRule(fields...)
     end
 
     # Build validators for isApplicable
-    input_type_validators = 
+    input_type_validators =
         String["length(input_types) == $(length(inbound_types.args))"]
     for (i, i_type) in enumerate(inbound_types.args)
         if i_type != :Nothing

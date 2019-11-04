@@ -6,6 +6,7 @@ variationalAlgorithm,
 """
 Create a variational algorithm to infer marginals over a posterior distribution, and compile it to Julia code
 """
+<<<<<<< HEAD
 function variationalAlgorithm(pfz::PosteriorFactorization=currentPosteriorFactorization(); 
                               id=Symbol(""), 
                               free_energy=false)
@@ -19,6 +20,13 @@ function variationalAlgorithm(pfz::PosteriorFactorization=currentPosteriorFactor
 
     # Infer schedule and marginal computations for each posterior factor
     for (_, pf) in pfz.posterior_factors
+=======
+function variationalAlgorithm(
+    pfz::PosteriorFactorization=currentPosteriorFactorization(),
+    id=Symbol(""))
+
+    for (_, pf) in pfz
+>>>>>>> finish update rules for q(x,kappa) and modifications to FL node and functions
         schedule = variationalSchedule(pf)
         pf.schedule = condense(flatten(schedule)) # Inline all internal message passing and remove clamp node entries
         pf.marginal_table = marginalTable(pf)
@@ -62,7 +70,7 @@ function variationalSchedule(posterior_factor::PosteriorFactor)
                 entry.message_update_rule = NaiveVariationalRule{typeof(entry.interface.node)}
             else
                 entry.message_update_rule = StructuredVariationalRule{typeof(entry.interface.node)}
-            end        
+            end
         else
             entry.message_update_rule = SumProductRule{typeof(entry.interface.node)}
         end
@@ -81,7 +89,7 @@ function inferUpdateRule!(  entry::ScheduleEntry,
                             inferred_outbound_types::Dict{Interface, Type}) where T<:NaiveVariationalRule
     # Collect inbound types
     inbound_types = collectInboundTypes(entry, rule_type, inferred_outbound_types)
-    
+
     # Find applicable rule(s)
     applicable_rules = Type[]
     for rule in leaftypes(entry.message_update_rule)
@@ -115,20 +123,20 @@ function collectInboundTypes(   entry::ScheduleEntry,
             push!(inbound_types, Nothing)
         else
             # Edge is external, accept marginal
-            push!(inbound_types, ProbabilityDistribution) 
+            push!(inbound_types, ProbabilityDistribution)
         end
     end
 
     return inbound_types
 end
 
-""" 
+"""
 `@naiveVariationalRule` registers a variational update rule for the naive
 (mean-field) factorization by defining the rule type and the corresponding
 methods for the `outboundType` and `isApplicable` functions. If no name (type)
 for the new rule is passed, a unique name (type) will be generated. Returns the
-rule type. 
-""" 
+rule type.
+"""
 macro naiveVariationalRule(fields...)
     # Init required fields in macro scope
     node_type = :unknown
@@ -163,7 +171,7 @@ macro naiveVariationalRule(fields...)
     end
 
     # Build validators for isApplicable
-    input_type_validators = 
+    input_type_validators =
         String["length(input_types) == $(length(inbound_types.args))"]
     for (i, i_type) in enumerate(inbound_types.args)
         if i_type != :Nothing
@@ -196,7 +204,7 @@ Returns a vector with inbounds that correspond with required interfaces.
 """
 function collectNaiveVariationalNodeInbounds(::FactorNode, entry::ScheduleEntry)
     target_to_marginal_entry = current_inference_algorithm.target_to_marginal_entry
-    
+
     inbounds = Any[]
     for node_interface in entry.interface.node.interfaces
         inbound_interface = ultimatePartner(node_interface)

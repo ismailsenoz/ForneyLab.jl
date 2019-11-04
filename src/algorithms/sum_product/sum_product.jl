@@ -6,6 +6,7 @@ sumProductAlgorithm,
 """
 Create a sum-product algorithm to infer marginals over `variables`
 """
+<<<<<<< HEAD
 function sumProductAlgorithm(variables::Vector{Variable};
                              id=Symbol(""),
                              free_energy=false)
@@ -13,6 +14,14 @@ function sumProductAlgorithm(variables::Vector{Variable};
     # Initialize empty posterior factorization
     pfz = PosteriorFactorization()
     # Contain the entire graph in a single posterior factor
+=======
+function sumProductAlgorithm(
+    variables::Vector{Variable},
+    pfz::PosteriorFactorization=currentPosteriorFactorization(),
+    id=Symbol(""))
+
+    # Initialize a container posterior factor
+>>>>>>> finish update rules for q(x,kappa) and modifications to FL node and functions
     pf = PosteriorFactor(pfz, id=Symbol(""))
     
     # Set the target regions (variables and clusters) of the posterior factor
@@ -26,7 +35,10 @@ function sumProductAlgorithm(variables::Vector{Variable};
     # Populate fields for algorithm compilation
     algo = InferenceAlgorithm(pfz, id=id)
     assembleInferenceAlgorithm!(algo)
+<<<<<<< HEAD
     free_energy && assembleFreeEnergy!(algo)
+=======
+>>>>>>> finish update rules for q(x,kappa) and modifications to FL node and functions
 
     return algo
 end
@@ -37,11 +49,17 @@ A non-specific sum-product update
 """
 abstract type SumProductRule{factor_type} <: MessageUpdateRule end
 
-""" 
+"""
 `sumProductSchedule()` generates a sum-product message passing schedule that
+<<<<<<< HEAD
 computes the marginals for each of the posterior factor targets.
 """ 
 function sumProductSchedule(pf::PosteriorFactor)
+=======
+computes the marginals for each of the argument variables.
+"""
+function sumProductSchedule(variables::Vector{Variable})
+>>>>>>> finish update rules for q(x,kappa) and modifications to FL node and functions
     # Generate a feasible summary propagation schedule
     schedule = summaryPropagationSchedule(sort(collect(pf.target_variables), rev=true), 
                                           sort(collect(pf.target_clusters), rev=true))
@@ -162,12 +180,12 @@ macro sumProductRule(fields...)
     outbound_type = :unknown
     inbound_types = :unknown
     name = :auto # Triggers automatic naming unless overwritten
-    
+
     # Loop over fields because order is unknown
     for arg in fields
 
         (arg.args[1] == :(=>)) || error("Invalid call to @sumProductRule")
-    
+
         if arg.args[2].value == :node_type
             node_type = arg.args[3]
         elseif arg.args[2].value == :outbound_type
@@ -191,7 +209,7 @@ macro sumProductRule(fields...)
     end
 
     # Build validators for isApplicable
-    input_type_validators = 
+    input_type_validators =
         String["length(input_types) == $(length(inbound_types.args))"]
     for (i, i_type) in enumerate(inbound_types.args)
         if i_type != :Nothing
