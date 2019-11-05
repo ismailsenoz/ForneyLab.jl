@@ -46,7 +46,6 @@ function ruleSVBGaussianControlledVarianceOutNGDD(dist_out::Nothing,
     v_x = dist_x.params[:v]
     m_ω, v_ω = unsafeMeanCov(dist_ω)
 
-    ksi = m_κ^2*v_z + m_z^2*v_κ+v_z*v_κ
     A = exp(-m_ω+v_ω/2)
     B = quadratureExpectationExp(dist_z_κ,10)
 
@@ -86,7 +85,6 @@ function ruleSVBGaussianControlledVarianceXGNDD(msg_out::Message{F1, Univariate}
     v_out = dist_out.params[:v]
     m_ω, v_ω = unsafeMeanCov(dist_ω)
 
-    ksi = m_κ^2*v_z + m_z^2*v_κ+v_z*v_κ
     A = exp(-m_ω+v_ω/2)
     B = quadratureExpectationExp(dist_z_κ,10)
 
@@ -126,7 +124,7 @@ function ruleSVBGaussianControlledVarianceZDGGD(dist_out_x::ProbabilityDistribut
 
     Psi = (m[1]-m[2])^2+v[1,1]+v[2,2]-v[1,2]-v[2,1]
     A = exp(-m_ω+v_ω/2)
-    h(x) = -0.5*x[1]*x[2]-0.5*A*Psi*exp(-x[1]*x[2])
+    h(x) = x[1]*x[2]+A*Psi*exp(-x[1]*x[2])
     newton_m, newton_v = NewtonMethod(h,[m_κ; m_z],50)
     mean = newton_m[2] + newton_v[1,2]*inv(newton_v[1,1])*(m_κ-newton_m[1])
     var = newton_v[2,2] - newton_v[1,2]*inv(newton_v[1,1])*newton_v[1,2] + (newton_v[1,2]*inv(newton_v[1,1]))^2*v_κ
@@ -168,7 +166,7 @@ function ruleSVBGaussianControlledVarianceΚDGGD(dist_out_x::ProbabilityDistribu
 
     Psi = (m[1]-m[2])^2+v[1,1]+v[2,2]-v[1,2]-v[2,1]
     A = exp(-m_ω+v_ω/2)
-    h(x) = -0.5*x[1]*x[2]-0.5*A*Psi*exp(-x[1]*x[2])
+    h(x) = x[1]*x[2]+A*Psi*exp(-x[1]*x[2])
     newton_m, newton_v = NewtonMethod(h,[m_κ; m_z],50)
     mean = newton_m[1] + newton_v[1,2]*inv(newton_v[2,2])*(m_κ-newton_m[2])
     var = newton_v[1,1] - newton_v[1,2]*inv(newton_v[2,2])*newton_v[1,2] + (newton_v[1,2]*inv(newton_v[2,2]))^2*v_z
@@ -247,8 +245,6 @@ function ruleMGaussianControlledVarianceGGDD(msg_out::Message{F1, Univariate},
     w_x = dist_x.params[:w]
     m_out = dist_out.params[:m]
     w_out = dist_out.params[:w]
-    m_z, v_z = unsafeMeanCov(dist_z)
-    m_κ, v_κ = unsafeMeanCov(dist_κ)
     m_ω, v_ω = unsafeMeanCov(dist_ω)
 
     A = exp(-m_ω+v_ω/2)
@@ -270,15 +266,15 @@ function ruleMGaussianControlledVarianceDGGD(dist_out_x::ProbabilityDistribution
     dist_out_x = convert(ProbabilityDistribution{Multivariate,GaussianMeanVariance},dist_out_x)
     m = dist_out_x.params[:m]
     v = dist_out_x.params[:v]
-    m_z, v_z = unsafeMeanCov(dist_z)
-    m_κ, v_κ = unsafeMeanCov(dist_κ)
+    m_z, v_z = unsafeMeanCov(msg_z.dist)
+    m_κ, v_κ = unsafeMeanCov(msg_κ.dist)
     m_ω, v_ω = unsafeMeanCov(dist_ω)
 
     Psi = (m[1]-m[2])^2+v[1,1]+v[2,2]-v[1,2]-v[2,1]
     A = exp(-m_ω+v_ω/2)
-    h(x) = -0.5*x[1]*x[2]-0.5*A*Psi*exp(-x[1]*x[2])
+    h(x) = x[1]*x[2] + A*Psi*exp(-x[1]*x[2])
     newton_m, newton_v = NewtonMethod(h,[m_κ; m_z],50)
-    dist = ProbabilityDistribution(GaussianMeanVariance,m=newton_m,v=newton_v)*ProbabilityDistribution(GaussianMeanVariance,m=[m_κ;m_z], v=[v_κ 0.0;0.0 v_z])
+    dist = ProbabilityDistribution(Multivariate,GaussianMeanVariance,m=newton_m,v=newton_v)*ProbabilityDistribution(Multivariate,GaussianMeanVariance,m=[m_κ;m_z], v=[v_κ 0.0;0.0 v_z])
 
     return dist
 end
@@ -298,7 +294,7 @@ function collectStructuredVariationalNodeInbounds(node::GaussianControlledVarian
 
         if node_interface == entry.interface
             # Ignore marginal of outbound edge
-            if (entry.msg_update_rule isa SVBGaussianControlledVarianceΚDGGD) || (entry.msg_update_rule isa SVBGaussianControlledVarianceZDGGD)
+            if entry.msg_update_rule in [SVBGaussianControlledVarianceΚDGGD, SVBGaussianControlledVarianceZDGGD]
                 inbound_idx = interface_to_msg_idx[inbound_interface]
                 push!(inbounds, "messages[$inbound_idx]")
             else

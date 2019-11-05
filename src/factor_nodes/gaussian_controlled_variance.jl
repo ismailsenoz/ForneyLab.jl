@@ -107,9 +107,8 @@ function NewtonMethod(g::Function,x_0::Array{Float64},n_its::Int64)
         grad = Zygote.gradient(g,x_0)
         hessian = Zygote.hessian(g,x_0)
         x = x_0 - inv(hessian)*grad[1]
-        var = -inv(hessian)
         x_0 = x
     end
-
+    var = 0.5*inv(Zygote.hessian(g,x))
     return x, var
 end
