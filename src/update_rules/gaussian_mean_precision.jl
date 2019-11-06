@@ -55,12 +55,12 @@
 
 @structuredVariationalRule(:node_type => GaussianMeanPrecision,
                            :outbound_type => Message{Gaussian},
-                           :inbound_types => Nothing,Message{ExponentialLinearQuadratic},ProbabilityDistribution,
+                           :inbound_types => (Nothing,Message{ExponentialLinearQuadratic},ProbabilityDistribution),
                            :name => SVBGaussianMeanPrecisionOutNED)
 
 @structuredVariationalRule(:node_type => GaussianMeanPrecision,
                           :outbound_type => Message{Gaussian},
-                          :inbound_types => Message{ExponentialLinearQuadratic},Nothing,ProbabilityDistribution,
+                          :inbound_types => (Message{ExponentialLinearQuadratic},Nothing,ProbabilityDistribution),
                           :name => SVBGaussianMeanPrecisionOutEND)
 
 @marginalRule(:node_type => GaussianMeanPrecision,

@@ -65,8 +65,8 @@ function averageEnergy(::Type{GaussianControlledVariance}, marg_out_x::Probabili
 
     psi = (m_out_x[2]-m_out_x[1])^2 + cov_out_x[1,1]+cov_out_x[2,2]-cov_out_x[1,2]-cov_out_x[2,1]
     A = exp(-m_ω + var_ω/2)
-    B = quadratureExpectationExp(marg_z_κ,10)
-    C = qudratureExpectationMultiplication(marg_z_κ,10)
+    B = quadratureExpectationExp(marg_z_κ,30)
+    C = qudratureExpectationMultiplication(marg_z_κ,30)
 
     return  -0.5log(2*pi) -0.5*(C+m_ω) -0.5*(psi*A*B)
 
@@ -99,16 +99,17 @@ function quadratureExpectationMultiplication(d::ProbabilityDistribution{Multivar
     return result
 end
 
+
 function NewtonMethod(g::Function,x_0::Array{Float64},n_its::Int64)
     dim = length(x_0)
     x = zeros(dim)
     var = zeros(dim,dim)
     for i=1:n_its
-        grad = Zygote.gradient(g,x_0)
-        hessian = Zygote.hessian(g,x_0)
-        x = x_0 - inv(hessian)*grad[1]
+        grad = ForwardDiff.gradient(g,x_0)
+        hessian = ForwardDiff.hessian(g,x_0)
+        x = x_0 - 0.1*inv(hessian)*grad
         x_0 = x
     end
-    var = 0.5*inv(Zygote.hessian(g,x))
+    var = 0.5*inv(ForwardDiff.hessian(g,x))
     return x, var
 end

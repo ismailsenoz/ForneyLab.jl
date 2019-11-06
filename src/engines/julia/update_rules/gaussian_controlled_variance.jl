@@ -47,7 +47,7 @@ function ruleSVBGaussianControlledVarianceOutNGDD(dist_out::Nothing,
     m_ω, v_ω = unsafeMeanCov(dist_ω)
 
     A = exp(-m_ω+v_ω/2)
-    B = quadratureExpectationExp(dist_z_κ,10)
+    B = quadratureExpectationExp(dist_z_κ,30)
 
 
     return Message(Univariate, GaussianMeanVariance, m=m_x, v=v_x+inv(A*B))
@@ -86,7 +86,7 @@ function ruleSVBGaussianControlledVarianceXGNDD(msg_out::Message{F1, Univariate}
     m_ω, v_ω = unsafeMeanCov(dist_ω)
 
     A = exp(-m_ω+v_ω/2)
-    B = quadratureExpectationExp(dist_z_κ,10)
+    B = quadratureExpectationExp(dist_z_κ,30)
 
     return Message(Univariate, GaussianMeanVariance, m=m_out, v=v_out+inv(A*B))
 end
@@ -204,7 +204,7 @@ function ruleSVBGaussianControlledVarianceΩDDN(dist_out_x::ProbabilityDistribut
 
 
     Psi = (m[1]-m[2])^2+v[1,1]+v[2,2]-v[1,2]-v[2,1]
-    B = quadratureExpectationExp(dist_z_κ,10)
+    B = quadratureExpectationExp(dist_z_κ,30)
 
     return Message(Univariate, ExponentialLinearQuadratic, a=1.0, b=Psi*B,c=-1.0,d=0.0)
 end
@@ -248,7 +248,7 @@ function ruleMGaussianControlledVarianceGGDD(msg_out::Message{F1, Univariate},
     m_ω, v_ω = unsafeMeanCov(dist_ω)
 
     A = exp(-m_ω+v_ω/2)
-    B = quadratureExpectationExp(dist_z_κ,10)
+    B = quadratureExpectationExp(dist_z_κ,30)
 
     W = [w_out+A*B -A*B; -A*B w_x+A*B]
     m = inv(W)*[m_out*w_out; m_x*w_x]
@@ -273,7 +273,7 @@ function ruleMGaussianControlledVarianceDGGD(dist_out_x::ProbabilityDistribution
     Psi = (m[1]-m[2])^2+v[1,1]+v[2,2]-v[1,2]-v[2,1]
     A = exp(-m_ω+v_ω/2)
     h(x) = x[1]*x[2] + A*Psi*exp(-x[1]*x[2])
-    newton_m, newton_v = NewtonMethod(h,[m_κ; m_z],50)
+    newton_m, newton_v = NewtonMethod(h,[m_κ; m_z],5)
     dist = ProbabilityDistribution(Multivariate,GaussianMeanVariance,m=newton_m,v=newton_v)*ProbabilityDistribution(Multivariate,GaussianMeanVariance,m=[m_κ;m_z], v=[v_κ 0.0;0.0 v_z])
 
     return dist
