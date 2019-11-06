@@ -1,3 +1,5 @@
+using FastGaussQuadrature
+using ForwardDiff
 export GaussianControlledVariance
 
 """
@@ -72,8 +74,6 @@ function averageEnergy(::Type{GaussianControlledVariance}, marg_out_x::Probabili
 
 end
 
-using FastGaussQuadrature
-using Zygote
 
 function quadratureExpectationExp(d::ProbabilityDistribution{Multivariate,GaussianMeanVariance},p::Int64)
     sigma_points, sigma_weights = gausshermite(p)

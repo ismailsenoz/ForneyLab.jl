@@ -115,7 +115,7 @@ end
 function ruleSVBGaussianMeanPrecisionOutNED(msg_out::Message{F,Univariate},
                                    msg_mean::Message{ExponentialLinearQuadratic},
                                    dist_prec::ProbabilityDistribution) where F<:Gaussian
-
+    dist_mean = msg_mean.dist
     approx_dist = laplaceApproximation(dist_mean,msg_out.dist.params[:m],10)
 
     return Message(GaussianMeanVariance, m=unsafeMean(approx_dist), v=unsafeCov(approx_dist) + cholinv(unsafeMean(dist_prec)))
@@ -126,7 +126,7 @@ function ruleSVBGaussianMeanPrecisionOutEND(msg_out::Message{ExponentialLinearQu
                                    msg_mean::Message{F, Univariate},
                                    dist_prec::ProbabilityDistribution) where F<:Gaussian
 
-    dist_out = convert(ProbabilityDistribution{GaussianMeanVariance},msg_out.dist)
+    dist_out = msg_out.dist
     approx_dist = laplaceApproximation(dist_out,msg_mean.dist.params[:m],10)
 
     return Message(GaussianMeanVariance, m=unsafeMean(approx_dist), v=unsafeCov(approx_dist) + cholinv(unsafeMean(dist_prec)))
@@ -140,9 +140,9 @@ function ruleMGaussianMeanPrecisionGED(
     msg_mean::Message{ExponentialLinearQuadratic},
     dist_prec::ProbabilityDistribution) where F<:Gaussian
 
-    d_out = convert(ProbabilityDistribution{GaussianWeightedMeanPrecision}, msg_out.dist)
+    d_out = convert(ProbabilityDistribution{Univariate, GaussianWeightedMeanPrecision}, msg_out.dist)
     d_approx = laplaceApproximation(msg_mean.dist,unsafeMean(d_out),10)
-    d_approx_mean = convert(ProbabilityDistribution{GaussianWeightedMeanPrecision},d_approx)
+    d_approx_mean = convert(ProbabilityDistribution{Univariate, GaussianWeightedMeanPrecision},d_approx)
     xi_y = d_out.params[:xi]
     W_y = d_out.params[:w]
     xi_m = d_approx_mean.params[:xi]
@@ -157,9 +157,9 @@ function ruleMGaussianMeanPrecisionEGD(
     msg_mean::Message{F, Univariate},
     dist_prec::ProbabilityDistribution) where F<:Gaussian
 
-    d_mean = convert(ProbabilityDistribution{GaussianWeightedMeanPrecision}, msg_out.dist)
+    d_mean = convert(ProbabilityDistribution{Univariate, GaussianWeightedMeanPrecision}, msg_mean.dist)
     d_approx = laplaceApproximation(msg_out.dist,unsafeMean(d_mean),10)
-    d_approx_out = convert(ProbabilityDistribution{GaussianWeightedMeanPrecision},d_approx)
+    d_approx_out = convert(ProbabilityDistribution{Univariate, GaussianWeightedMeanPrecision},d_approx)
     xi_y = d_approx_out.params[:xi]
     W_y = d_approx_out.params[:w]
     xi_m = d_mean.params[:xi]
@@ -183,7 +183,7 @@ function collectStructuredVariationalNodeInbounds(node::GaussianMeanPrecision, e
 
         if node_interface == entry.interface
             # Ignore marginal of outbound edge
-            if (entry.msg_update_rule isa SVBGaussianMeanPrecisionOutNED) || (entry.msg_update_rule isa SVBGaussianMeanPrecisionOutEND)
+            if (entry.msg_update_rule == SVBGaussianMeanPrecisionOutNED) || (entry.msg_update_rule == SVBGaussianMeanPrecisionOutEND)
                 inbound_idx = interface_to_msg_idx[inbound_interface]
                 push!(inbounds, "messages[$inbound_idx]")
             else

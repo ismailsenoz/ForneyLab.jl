@@ -143,7 +143,7 @@ function laplaceApproximation(dist::ProbabilityDistribution{Univariate,Exponenti
     for i=1:d
         grad = ForwardDiff.derivative(g,x_0)
         hessian = ForwardDiff.derivative(x -> ForwardDiff.derivative(g,x),x_0)
-        mean = x_0 - inv(hessian)*grad[1]
+        mean = x_0 - inv(hessian)*grad
         var = -inv(hessian)
         x_0 = mean
     end
