@@ -96,5 +96,5 @@ function isApplicable(::Type{SPEqualityGaussianGCV}, input_types::Vector{Type})
         end
     end
 
-    return (nothing_inputs == 1) && (gaussian_inputs == 1) && (log_det_inputs == 1)
+    return (nothing_inputs == 1) && (gaussian_inputs == 1) && (exp_lin_quad_inputs == 1)
 end
