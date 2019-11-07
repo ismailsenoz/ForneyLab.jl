@@ -141,10 +141,10 @@ function laplaceApproximation(dist::ProbabilityDistribution{Univariate,Exponenti
     mean = 0.0
     var = 0.0
     for i=1:dim
-        @show grad = ForwardDiff.derivative(g,x_0)
-        @show hessian = ForwardDiff.derivative(x -> ForwardDiff.derivative(g,x),x_0)
-        @show mean = x_0 - inv(hessian)*grad
-        @show var = -0.5*inv(hessian)
+        grad = ForwardDiff.derivative(g,x_0)
+        hessian = ForwardDiff.derivative(x -> ForwardDiff.derivative(g,x),x_0)
+        mean = x_0 - inv(hessian)*grad
+        var = -0.5*inv(hessian)
         x_0 = mean
     end
     return ProbabilityDistribution(GaussianMeanVariance,m=mean,v=var)

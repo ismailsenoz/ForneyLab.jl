@@ -105,11 +105,11 @@ function NewtonMethod(g::Function,x_0::Array{Float64},n_its::Int64)
     x = zeros(dim)
     var = zeros(dim,dim)
     for i=1:n_its
-        @show grad = ForwardDiff.gradient(g,x_0)
-        @show hessian = ForwardDiff.hessian(g,x_0)
-        x = x_0 - 0.1*inv(hessian)*grad
+        grad = ForwardDiff.gradient(g,x_0)
+        hessian = ForwardDiff.hessian(g,x_0)
+        x = x_0 - inv(hessian)*grad
         x_0 = x
     end
-    @show var = 0.5*inv(ForwardDiff.hessian(g,x))
+    var = -0.5*inv(ForwardDiff.hessian(g,x))
     return x, var
 end

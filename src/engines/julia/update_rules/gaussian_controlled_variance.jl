@@ -125,7 +125,7 @@ function ruleSVBGaussianControlledVarianceZDGGD(dist_out_x::ProbabilityDistribut
     Psi = (m[1]-m[2])^2+v[1,1]+v[2,2]-v[1,2]-v[2,1]
     A = exp(-m_ω+v_ω/2)
     h(x) = x[1]*x[2]+A*Psi*exp(-x[1]*x[2])
-    newton_m, newton_v = NewtonMethod(h,[m_κ; m_z],50)
+    newton_m, newton_v = NewtonMethod(h,[m_κ; m_z],10)
     mean = newton_m[2] + newton_v[1,2]*inv(newton_v[1,1])*(m_κ-newton_m[1])
     var = newton_v[2,2] - newton_v[1,2]*inv(newton_v[1,1])*newton_v[1,2] + (newton_v[1,2]*inv(newton_v[1,1]))^2*v_κ
 
@@ -166,8 +166,8 @@ function ruleSVBGaussianControlledVarianceΚDGGD(dist_out_x::ProbabilityDistribu
 
     Psi = (m[1]-m[2])^2+v[1,1]+v[2,2]-v[1,2]-v[2,1]
     A = exp(-m_ω+v_ω/2)
-    h(x) = x[1]*x[2]+A*Psi*exp(-x[1]*x[2])
-    newton_m, newton_v = NewtonMethod(h,[m_κ; m_z],50)
+    h(x) = -0.5*((x[1]-m_κ)^2/v_κ +(x[2]-m_z)^2/v_z + x[1]*x[2] + A*Psi*exp(-x[1]*x[2]))
+    newton_m, newton_v = NewtonMethod(h,[m_κ; m_z],10)
     mean = newton_m[1] + newton_v[1,2]*inv(newton_v[2,2])*(m_κ-newton_m[2])
     var = newton_v[1,1] - newton_v[1,2]*inv(newton_v[2,2])*newton_v[1,2] + (newton_v[1,2]*inv(newton_v[2,2]))^2*v_z
 
@@ -272,11 +272,11 @@ function ruleMGaussianControlledVarianceDGGD(dist_out_x::ProbabilityDistribution
 
     Psi = (m[1]-m[2])^2+v[1,1]+v[2,2]-v[1,2]-v[2,1]
     A = exp(-m_ω+v_ω/2)
-    h(x) = x[1]*x[2] + A*Psi*exp(-x[1]*x[2])
-    newton_m, newton_v = NewtonMethod(h,[m_κ; m_z],5)
-    dist = ProbabilityDistribution(Multivariate,GaussianMeanVariance,m=newton_m,v=newton_v)*ProbabilityDistribution(Multivariate,GaussianMeanVariance,m=[m_κ;m_z], v=[v_κ 0.0;0.0 v_z])
+    h(x) = -0.5*((x[1]-m_κ)^2/v_κ +(x[2]-m_z)^2/v_z + x[1]*x[2] + A*Psi*exp(-x[1]*x[2]))
+    newton_m, newton_v = NewtonMethod(h,[m_κ; m_z],10)
+    # dist = ProbabilityDistribution(Multivariate,GaussianMeanVariance,m=newton_m,v=newton_v)*ProbabilityDistribution(Multivariate,GaussianMeanVariance,m=[m_κ;m_z], v=[v_κ 0.0;0.0 v_z])
 
-    return dist
+    return ProbabilityDistribution(Multivariate,GaussianMeanVariance,m=newton_m,v=newton_v)
 end
 
 
