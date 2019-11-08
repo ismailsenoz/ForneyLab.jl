@@ -74,7 +74,6 @@ function averageEnergy(::Type{GaussianControlledVariance}, marg_out_x::Probabili
 
 end
 
-
 function quadratureExpectationExp(d::ProbabilityDistribution{Multivariate,GaussianMeanVariance},p::Int64)
     sigma_points, sigma_weights = gausshermite(p)
     sigma_weights = sigma_weights./ (sqrt(pi)*2^(p-1))
