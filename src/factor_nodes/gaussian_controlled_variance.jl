@@ -54,10 +54,9 @@ function averageEnergy(::Type{GaussianControlledVariance}, marg_out_x::Probabili
     ksi = (m_κ^2)*var_z + (m_z^2)*var_κ + var_κ*var_z
     psi = (m_out_x[2]-m_out_x[1])^2 + cov_out_x[1,1]+cov_out_x[2,2]-cov_out_x[1,2]-cov_out_x[2,1]
     A = exp(-m_ω + var_ω/2)
-    B = exp(-m_κ*m_z + psi/2)
+    B = exp(-m_κ*m_z + ksi/2)
 
-    return  -0.5log(2*pi) -0.5*(m_z*m_κ+m_ω) -0.5*(psi*A*B)
-
+    0.5log(2*pi) + 0.5*(m_z*m_κ+m_ω) + 0.5*(psi*A*B))
 end
 # Average energy functional
 function averageEnergy(::Type{GaussianControlledVariance}, marg_out_x::ProbabilityDistribution{Multivariate}, marg_z_κ::ProbabilityDistribution{Multivariate}, marg_ω::ProbabilityDistribution{Univariate})
@@ -70,8 +69,7 @@ function averageEnergy(::Type{GaussianControlledVariance}, marg_out_x::Probabili
     B = quadratureExpectationExp(marg_z_κ,30)
     C = qudratureExpectationMultiplication(marg_z_κ,30)
 
-    return  -0.5log(2*pi) -0.5*(C+m_ω) -0.5*(psi*A*B)
-
+    0.5log(2*pi) + 0.5*(C+m_ω) + 0.5*(psi*A*B)
 end
 
 function quadratureExpectationExp(d::ProbabilityDistribution{Multivariate,GaussianMeanVariance},p::Int64)
