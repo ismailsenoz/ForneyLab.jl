@@ -74,11 +74,11 @@ end
 
 function quadratureExpectationExp(d::ProbabilityDistribution{Multivariate,GaussianMeanVariance},p::Int64)
     sigma_points, sigma_weights = gausshermite(p)
-    sigma_weights = sigma_weights./ (sqrt(pi)*2^(p-1))
+    sigma_weights = sigma_weights
     m, v = unsafeMeanCov(d)
     result = 0.0
     for i=1:p
-        result += sigma_weights[i]*exp((m[1]+sqrt(v[1,1])*sigma_points[i])*(m[2]+sqrt(v[2,2])*sigma_points[i]))
+        result += sigma_weights[i]*exp((m[1]+sqrt(2*v[1,1])*sigma_points[i])*(m[2]+sqrt(2*v[2,2])*sigma_points[i]))/(sqrt(pi)*2^(p-1))
     end
 
     return result
@@ -86,11 +86,11 @@ end
 
 function quadratureExpectationMultiplication(d::ProbabilityDistribution{Multivariate,GaussianMeanVariance},p::Int64)
     sigma_points, sigma_weights = gausshermite(p)
-    sigma_weights = sigma_weights./ (sqrt(pi)*2^(p-1))
+    sigma_weights = sigma_weights
     m, v = unsafeMeanCov(d)
     result = 0.0
     for i=1:p
-        result += sigma_weights[i]*(m[1]+sqrt(v[1,1])*sigma_points[i])*(m[2]+sqrt(v[2,2])*sigma_points[i])
+        result += sigma_weights[i]*(m[1]+sqrt(2*v[1,1])*sigma_points[i])*(m[2]+sqrt(2*v[2,2])*sigma_points[i])/(sqrt(pi)*2^(p-1))
     end
 
     return result

@@ -42,8 +42,7 @@ ProbabilityDistribution(::Type{ExponentialLinearQuadratic}; a=1.0,b=1.0,c=1.0,d=
 using FastGaussQuadrature
 using LinearAlgebra
 using ForwardDiff
-using QuadGK
-#
+
 @symmetrical function prod!(x::ProbabilityDistribution{Univariate, ExponentialLinearQuadratic},
                 y::ProbabilityDistribution{Univariate, F1},
                 z::ProbabilityDistribution{Univariate, GaussianMeanVariance}=ProbabilityDistribution(Univariate, GaussianMeanVariance, m=0.0,v=1.0)) where F1<:Gaussian
@@ -54,7 +53,7 @@ using QuadGK
     b = x.params[:b]
     c = x.params[:c]
     d = x.params[:d]
-    p = 30
+    p = 60
 
     g(x) = exp(-0.5*(a*x+b*exp(c*x+d*x^2/2)))
     normalization_constant = quadrature(g,dist_y,p)
@@ -128,9 +127,8 @@ function quadrature(g::Function,d::ProbabilityDistribution{Univariate,GaussianMe
     m, v = ForneyLab.unsafeMeanCov(d)
     result = 0.0
     for i=1:p
-        result += sigma_weights[i]*g(m+sqrt(2*v)*sigma_points[i])/sqrt(pi)
+        result += sigma_weights[i]*g(m+sqrt(2*v)*sigma_points[i])/(sqrt(pi)*2^(p-1))
     end
-
     return result
 end
 
