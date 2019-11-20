@@ -127,7 +127,7 @@ function quadrature(g::Function,d::ProbabilityDistribution{Univariate,GaussianMe
     m, v = ForneyLab.unsafeMeanCov(d)
     result = 0.0
     for i=1:p
-        result += sigma_weights[i]*g(m+sqrt(2*v)*sigma_points[i])/(sqrt(pi)*2^(p-1))
+        result += sigma_weights[i]*g(m+sqrt(2*v)*sigma_points[i])/sqrt(pi)
     end
     return result
 end

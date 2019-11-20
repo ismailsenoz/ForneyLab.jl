@@ -78,7 +78,7 @@ function quadratureExpectationExp(d::ProbabilityDistribution{Multivariate,Gaussi
     m, v = unsafeMeanCov(d)
     result = 0.0
     for i=1:p
-        result += sigma_weights[i]*exp((m[1]+sqrt(2*v[1,1])*sigma_points[i])*(m[2]+sqrt(2*v[2,2])*sigma_points[i]))/(sqrt(pi)*2^(p-1))
+        result += sigma_weights[i]*exp((m[1]+sqrt(2*v[1,1])*sigma_points[i])*(m[2]+sqrt(2*v[2,2])*sigma_points[i]))/sqrt(pi)
     end
 
     return result
@@ -90,7 +90,7 @@ function quadratureExpectationMultiplication(d::ProbabilityDistribution{Multivar
     m, v = unsafeMeanCov(d)
     result = 0.0
     for i=1:p
-        result += sigma_weights[i]*(m[1]+sqrt(2*v[1,1])*sigma_points[i])*(m[2]+sqrt(2*v[2,2])*sigma_points[i])/(sqrt(pi)*2^(p-1))
+        result += sigma_weights[i]*(m[1]+sqrt(2*v[1,1])*sigma_points[i])*(m[2]+sqrt(2*v[2,2])*sigma_points[i])/sqrt(pi)
     end
 
     return result
