@@ -204,7 +204,7 @@ function ruleSVBGaussianControlledVarianceΩDDN(dist_out_x::ProbabilityDistribut
 
 
     Psi = (m[1]-m[2])^2+v[1,1]+v[2,2]-v[1,2]-v[2,1]
-    B = quadratureExpectationExp(dist_z_κ,30)
+    B = quadratureExpectationExp(dist_z_κ,10)
 
     return Message(Univariate, ExponentialLinearQuadratic, a=1.0, b=Psi*B,c=-1.0,d=0.0)
 end
@@ -227,7 +227,7 @@ function ruleMGaussianControlledVarianceGGDDD(msg_out::Message{F1, Univariate},
     ksi = m_κ^2*v_z + m_z^2*v_κ+v_z*v_κ
     A = exp(-m_ω+v_ω/2)
     B = exp(-m_κ*m_z + ksi/2)
-    W = [w_out+A*B -A*B; -A*B w_x+A*B]
+    W = [w_out+A*B -A*B; -A*B w_x+A*B] +1e-8diageye(2)
     m = inv(W)*[m_out*w_out; m_x*w_x]
 
     return ProbabilityDistribution(Multivariate, GaussianMeanPrecision, m=m, w=W)
@@ -248,9 +248,9 @@ function ruleMGaussianControlledVarianceGGDD(msg_out::Message{F1, Univariate},
     m_ω, v_ω = unsafeMeanCov(dist_ω)
 
     A = exp(-m_ω+v_ω/2)
-    B = quadratureExpectationExp(dist_z_κ,30)
+    B = quadratureExpectationExp(dist_z_κ,10)
 
-    W = [w_out+A*B -A*B; -A*B w_x+A*B]
+    W = [w_out+A*B -A*B; -A*B w_x+A*B] +1e-8diageye(2)
     m = inv(W)*[m_out*w_out; m_x*w_x]
 
     return ProbabilityDistribution(Multivariate, GaussianMeanPrecision, m=m, w=W)

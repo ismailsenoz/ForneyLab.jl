@@ -81,7 +81,7 @@ function isApplicable(::Type{SPEqualityGaussianRGMP}, input_types::Vector{Type})
 end
 
 mutable struct SPEqualityGaussianGCV <: SumProductRule{Equality} end
-outboundType(::Type{SPEqualityGaussianGCV}) = Message{Gaussian}
+outboundType(::Type{SPEqualityGaussianGCV}) = Message{GaussianMeanVariance}
 function isApplicable(::Type{SPEqualityGaussianGCV}, input_types::Vector{Type})
     nothing_inputs = 0
     gaussian_inputs = 0

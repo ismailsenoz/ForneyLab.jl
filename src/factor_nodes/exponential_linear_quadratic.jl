@@ -36,12 +36,22 @@ slug(::Type{ExponentialLinearQuadratic}) = "ELQ"
 
 format(dist::ProbabilityDistribution{Univariate, ExponentialLinearQuadratic}) = "$(slug(ExponentialLinearQuadratic))(a=$(format(dist.params[:a])), b=$(format(dist.params[:b])), c=$(format(dist.params[:c])), d=$(format(dist.params[:d])))"
 
+vague(::Type{ExponentialLinearQuadratic}) = ProbabilityDistribution(Univariate, ExponentialLinearQuadratic, a=0.0, b=tiny, c=0.0, d=0.0)
+
 ProbabilityDistribution(::Type{Univariate}, ::Type{ExponentialLinearQuadratic}; a=1.0,b=1.0,c=1.0,d=1.0)= ProbabilityDistribution{Univariate, ExponentialLinearQuadratic}(Dict(:a=>a, :b=>b, :c=>c, :d=>d))
 ProbabilityDistribution(::Type{ExponentialLinearQuadratic}; a=1.0,b=1.0,c=1.0,d=1.0) = ProbabilityDistribution{Univariate, ExponentialLinearQuadratic}(Dict(:a=>a, :b=>b, :c=>c, :d=>d))
 
 using FastGaussQuadrature
 using LinearAlgebra
 using ForwardDiff
+
+# function kldiv(d1::ProbabilityDistribution,d2::ProbabilityDistribution)
+#     (m1,v1) = unsafeMeanCov(d1)
+#     (m2,v2) = unsafeMeanCov(d2)
+#
+#     return 0.5*log(v2/v1) + (v1+(m1-m2)^2)/(2*v2) - 0.5
+#
+# end
 
 @symmetrical function prod!(x::ProbabilityDistribution{Univariate, ExponentialLinearQuadratic},
                 y::ProbabilityDistribution{Univariate, F1},
@@ -53,23 +63,31 @@ using ForwardDiff
     b = x.params[:b]
     c = x.params[:c]
     d = x.params[:d]
-    p = 60
+    p = 10
 
     g(x) = exp(-0.5*(a*x+b*exp(c*x+d*x^2/2)))
     normalization_constant = quadrature(g,dist_y,p)
     t(x) = x*g(x)/normalization_constant
-    mean = quadrature(t,dist_y,p)
-    s(x) = (x-mean)^2*g(x)/normalization_constant
-    var = quadrature(s,dist_y,p)
+    mean_post = quadrature(t,dist_y,p)
+    s(x) = (x-mean_post)^2*g(x)/normalization_constant
+    var_post = quadrature(s,dist_y,p)
 
-    z.params[:m] = mean
-    z.params[:v] = var
+    # println("prior mean: ", m_y, "posterior mean: ", mean)
+    # println("prior variance: ", v_y, "posterior variance: ", var)
+    #
+    # g_der(x) = -0.5*(a + b*g(x)*(c+d*x)+2*(x-m_y)/v_y)
+    # g_hes(x) = -0.5*(g(x)*b*(a^2-2*a*x*d+x^2*d+d) + 2/v_y)
+    # println("derivative ", g_der(mean)," ","hessian ", g_hes(mean))
+
+    z.params[:m] = mean_post
+    z.params[:v] = var_post
+
 
     return z
 end
 
 
-
+#
 # @symmetrical function prod!(x::ProbabilityDistribution{Univariate, ExponentialLinearQuadratic},
 #                 y::ProbabilityDistribution{Univariate,F},
 #                 z::ProbabilityDistribution{Univariate, GaussianMeanVariance}=ProbabilityDistribution(Univariate, GaussianMeanVariance, m=0.0,v=1.0)) where F<:Gaussian
@@ -95,6 +113,38 @@ end
 #     println(mean_z, " ", var_z)
 #     z.params[:m] = mean_z
 #     z.params[:v] = var_z
+#
+#     return z
+# end
+
+#
+# @symmetrical function prod!(x::ProbabilityDistribution{Univariate, ExponentialLinearQuadratic},
+#                 y::ProbabilityDistribution{Univariate,F},
+#                 z::ProbabilityDistribution{Univariate, GaussianMeanVariance}=ProbabilityDistribution(Univariate, GaussianMeanVariance, m=0.0,v=1.0)) where F<:Gaussian
+#
+#     dist_y = convert(ProbabilityDistribution{Univariate, GaussianMeanVariance}, y)
+#     m_y = dist_y.params[:m]
+#     v_y = dist_y.params[:v]
+#     a = x.params[:a]
+#     b = x.params[:b]
+#     c = x.params[:c]
+#     d = x.params[:d]
+#     f(x) = exp(c*x+d*x^2/2)
+#     g_der(x) = -0.5*(a + b*f(x)*(c+d*x)+2*(x-m_y)/v_y)
+#     g_hes(x) = -0.5*(f(x)*b*(a^2-2*a*x*d+x^2*d+d) + 2/v_y)
+#     # mean_z = 0.0
+#     # for i = 1:10
+#     println(g_der(m_y), g_hes(m_y))
+#     mean_z = 0.0
+#     for i=1:100
+#         mean_z = m_y - 0.1*g_der(m_y)
+#         m_y = mean_z
+#     end
+#     # end
+#     z.params[:m] = mean_z
+#     z.params[:v] = -1/g_hes(mean_z)
+#
+#
 #
 #     return z
 # end

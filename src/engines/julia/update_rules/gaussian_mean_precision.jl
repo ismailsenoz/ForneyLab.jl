@@ -11,7 +11,7 @@ ruleSVBGaussianMeanPrecisionW,
 ruleSVBGaussianMeanPrecisionMGVD,
 ruleMGaussianMeanPrecisionGGD,
 ruleSVBGaussianMeanPrecisionOutNED,
-ruleSVBGaussianMeanPrecisionOutEND,
+ruleSVBGaussianMeanPrecisionMEND,
 ruleMGaussianMeanPrecisionGED,
 ruleMGaussianMeanPrecisionEGD
 
@@ -121,10 +121,9 @@ function ruleSVBGaussianMeanPrecisionOutNED(msg_out::Message{F,Univariate},
     approx_dist = dist_prior*msg_mean.dist
 
     return Message(GaussianMeanVariance, m=unsafeMean(approx_dist), v=unsafeCov(approx_dist) + cholinv(unsafeMean(dist_prec)))
-
 end
 
-function ruleSVBGaussianMeanPrecisionOutEND(msg_out::Message{ExponentialLinearQuadratic},
+function ruleSVBGaussianMeanPrecisionMEND(msg_out::Message{ExponentialLinearQuadratic},
                                    msg_mean::Message{F, Univariate},
                                    dist_prec::ProbabilityDistribution) where F<:Gaussian
 
@@ -134,7 +133,6 @@ function ruleSVBGaussianMeanPrecisionOutEND(msg_out::Message{ExponentialLinearQu
     approx_dist = dist_prior*msg_out.dist
 
     return Message(GaussianMeanVariance, m=unsafeMean(approx_dist), v=unsafeCov(approx_dist) + cholinv(unsafeMean(dist_prec)))
-
 end
 
 
@@ -190,7 +188,7 @@ function collectStructuredVariationalNodeInbounds(node::GaussianMeanPrecision, e
 
         if node_interface == entry.interface
             # Ignore marginal of outbound edge
-            if (entry.msg_update_rule == SVBGaussianMeanPrecisionOutNED) || (entry.msg_update_rule == SVBGaussianMeanPrecisionOutEND)
+            if (entry.msg_update_rule == SVBGaussianMeanPrecisionOutNED) || (entry.msg_update_rule == SVBGaussianMeanPrecisionMEND)
                 inbound_idx = interface_to_msg_idx[inbound_interface]
                 push!(inbounds, "messages[$inbound_idx]")
             else
