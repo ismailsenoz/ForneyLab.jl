@@ -23,9 +23,27 @@
                        :inbound_types => (ProbabilityDistribution,ProbabilityDistribution,ProbabilityDistribution,Nothing),
                        :name          => SVBGaussianControlledVarianceΩDDDN)
 
+@structuredVariationalRule(:node_type     => GaussianControlledVariance,
+                          :outbound_type => Message{GaussianMeanVariance},
+                          :inbound_types => (Nothing, Message{ExponentialLinearQuadratic}, ProbabilityDistribution, ProbabilityDistribution,ProbabilityDistribution),
+                          :name          => SVBGaussianControlledVarianceOutNEDDD)
+
+@structuredVariationalRule(:node_type     => GaussianControlledVariance,
+                         :outbound_type => Message{GaussianMeanVariance},
+                         :inbound_types => (Message{ExponentialLinearQuadratic}, Nothing, ProbabilityDistribution, ProbabilityDistribution,ProbabilityDistribution),
+                         :name          => SVBGaussianControlledVarianceMENDDD)
+
 @marginalRule(:node_type     => GaussianControlledVariance,
               :inbound_types => (Message{Gaussian},Message{Gaussian},ProbabilityDistribution,ProbabilityDistribution,ProbabilityDistribution),
               :name          => MGaussianControlledVarianceGGDDD)
+
+@marginalRule(:node_type     => GaussianControlledVariance,
+            :inbound_types => (Message{ExponentialLinearQuadratic},Message{Gaussian},ProbabilityDistribution,ProbabilityDistribution,ProbabilityDistribution),
+            :name          => MGaussianControlledVarianceEGDDD)
+
+@marginalRule(:node_type     => GaussianControlledVariance,
+            :inbound_types => (Message{Gaussian},Message{ExponentialLinearQuadratic},ProbabilityDistribution,ProbabilityDistribution,ProbabilityDistribution),
+            :name          => MGaussianControlledVarianceGEDDD)
 
 @structuredVariationalRule(:node_type     => GaussianControlledVariance,
                          :outbound_type => Message{GaussianMeanVariance},

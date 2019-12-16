@@ -63,7 +63,7 @@ using ForwardDiff
     b = x.params[:b]
     c = x.params[:c]
     d = x.params[:d]
-    p = 10
+    p = 30
 
     g(x) = exp(-0.5*(a*x+b*exp(c*x+d*x^2/2)))
     normalization_constant = quadrature(g,dist_y,p)

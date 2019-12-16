@@ -10,8 +10,42 @@ ruleSVBGaussianControlledVarianceXGNDD,
 ruleSVBGaussianControlledVarianceZDGGD,
 ruleSVBGaussianControlledVarianceΚDGGD,
 ruleSVBGaussianControlledVarianceΩDDN,
+ruleSVBGaussianControlledVarianceOutNEDDD,
+ruleSVBGaussianControlledVarianceMENDDD,
 ruleMGaussianControlledVarianceGGDD,
-ruleMGaussianControlledVarianceDGGD
+ruleMGaussianControlledVarianceDGGD,
+ruleMGaussianControlledVarianceEGDDD,
+ruleMGaussianControlledVarianceGEDDD
+
+function ruleSVBGaussianControlledVarianceMENDDD(msg_out::Message{ExponentialLinearQuadratic},
+                                                   msg_x::Message{F, Univariate},
+                                                   dist_z::ProbabilityDistribution{Univariate},
+                                                   dist_κ::ProbabilityDistribution{Univariate},
+                                                   dist_ω::ProbabilityDistribution{Univariate}) where F<:Gaussian
+
+    dist_out = msg_out.dist
+    message_prior = ruleSVBGaussianControlledVarianceOutNGDDD(nothing, msg_x,dist_z,dist_κ,dist_ω)
+    dist_prior = convert(ProbabilityDistribution{Univariate, GaussianMeanVariance},message_prior.dist)
+    approx_dist = dist_prior*dist_out
+
+    return Message(Univariate,GaussianMeanVariance,m=approx_dist.params[:m],v=approx_dist.params[:v])
+end
+
+function ruleSVBGaussianControlledVarianceOutNEDDD(msg_out::Message{F, Univariate},
+                                                   msg_x::Message{ExponentialLinearQuadratic},
+                                                   dist_z::ProbabilityDistribution{Univariate},
+                                                   dist_κ::ProbabilityDistribution{Univariate},
+                                                   dist_ω::ProbabilityDistribution{Univariate}) where F<:Gaussian
+
+
+    dist_x = msg_x.dist
+    message_prior = ruleSVBGaussianControlledVarianceOutNGDDD(nothing, msg_out,dist_z,dist_κ,dist_ω)
+    dist_prior = convert(ProbabilityDistribution{Univariate, GaussianMeanVariance},message_prior.dist)
+    approx_dist = dist_prior*dist_x
+
+    return Message(Univariate,GaussianMeanVariance,m=approx_dist.params[:m],v=approx_dist.params[:v])
+end
+
 
 function ruleSVBGaussianControlledVarianceOutNGDDD(dist_out::Nothing,
                                                    msg_x::Message{F, Univariate},
@@ -233,6 +267,70 @@ function ruleMGaussianControlledVarianceGGDDD(msg_out::Message{F1, Univariate},
     return ProbabilityDistribution(Multivariate, GaussianMeanPrecision, m=m, w=W)
 
 end
+function ruleMGaussianControlledVarianceEGDDD(msg_out::Message{ExponentialLinearQuadratic},
+                                              msg_x::Message{F1, Univariate},
+                                              dist_z::ProbabilityDistribution{Univariate},
+                                              dist_κ::ProbabilityDistribution{Univariate},
+                                              dist_ω::ProbabilityDistribution{Univariate}) where {F1 <: Gaussian}
+
+
+    dist_out = msg_out.dist
+    message_prior = ruleSVBGaussianControlledVarianceOutNGDDD(nothing, msg_x,dist_z,dist_κ,dist_ω)
+    dist_prior = convert(ProbabilityDistribution{Univariate, GaussianMeanVariance},message_prior.dist)
+    approx_dist = dist_prior*dist_out
+
+    dist_out = convert(ProbabilityDistribution{Univariate,GaussianMeanPrecision},approx_dist)
+    dist_x = convert(ProbabilityDistribution{Univariate,GaussianMeanPrecision},msg_x.dist)
+    m_x = dist_x.params[:m]
+    w_x = dist_x.params[:w]
+    m_out = dist_out.params[:m]
+    w_out = dist_out.params[:w]
+    m_z, v_z = unsafeMeanCov(dist_z)
+    m_κ, v_κ = unsafeMeanCov(dist_κ)
+    m_ω, v_ω = unsafeMeanCov(dist_ω)
+
+    ksi = m_κ^2*v_z + m_z^2*v_κ+v_z*v_κ
+    A = exp(-m_ω+v_ω/2)
+    B = exp(-m_κ*m_z + ksi/2)
+    W = [w_out+A*B -A*B; -A*B w_x+A*B] +1e-8diageye(2)
+    m = inv(W)*[m_out*w_out; m_x*w_x]
+
+    return ProbabilityDistribution(Multivariate, GaussianMeanPrecision, m=m, w=W)
+
+end
+
+function ruleMGaussianControlledVarianceGEDDD(msg_out::Message{F1, Univariate},
+                                              msg_x::Message{ExponentialLinearQuadratic},
+                                              dist_z::ProbabilityDistribution{Univariate},
+                                              dist_κ::ProbabilityDistribution{Univariate},
+                                              dist_ω::ProbabilityDistribution{Univariate}) where {F1 <: Gaussian}
+
+
+    dist_x = msg_x.dist
+    message_prior = ruleSVBGaussianControlledVarianceOutNGDDD(nothing, msg_out,dist_z,dist_κ,dist_ω)
+    dist_prior = convert(ProbabilityDistribution{Univariate, GaussianMeanVariance},message_prior.dist)
+    approx_dist = dist_prior*dist_x
+
+    dist_out = convert(ProbabilityDistribution{Univariate,GaussianMeanPrecision},msg_out.dist)
+    dist_x = convert(ProbabilityDistribution{Univariate,GaussianMeanPrecision},approx_dist)
+    m_x = dist_x.params[:m]
+    w_x = dist_x.params[:w]
+    m_out = dist_out.params[:m]
+    w_out = dist_out.params[:w]
+    m_z, v_z = unsafeMeanCov(dist_z)
+    m_κ, v_κ = unsafeMeanCov(dist_κ)
+    m_ω, v_ω = unsafeMeanCov(dist_ω)
+
+    ksi = m_κ^2*v_z + m_z^2*v_κ+v_z*v_κ
+    A = exp(-m_ω+v_ω/2)
+    B = exp(-m_κ*m_z + ksi/2)
+    W = [w_out+A*B -A*B; -A*B w_x+A*B] +1e-8diageye(2)
+    m = inv(W)*[m_out*w_out; m_x*w_x]
+
+    return ProbabilityDistribution(Multivariate, GaussianMeanPrecision, m=m, w=W)
+
+end
+
 
 function ruleMGaussianControlledVarianceGGDD(msg_out::Message{F1, Univariate},
                                               msg_x::Message{F2, Univariate},
@@ -294,7 +392,7 @@ function collectStructuredVariationalNodeInbounds(node::GaussianControlledVarian
 
         if node_interface == entry.interface
             # Ignore marginal of outbound edge
-            if entry.msg_update_rule in [SVBGaussianControlledVarianceΚDGGD, SVBGaussianControlledVarianceZDGGD]
+            if entry.msg_update_rule in [SVBGaussianControlledVarianceΚDGGD,SVBGaussianControlledVarianceZDGGD,SVBGaussianControlledVarianceOutNEDDD,SVBGaussianControlledVarianceMENDDD]
                 inbound_idx = interface_to_msg_idx[inbound_interface]
                 push!(inbounds, "messages[$inbound_idx]")
             else
