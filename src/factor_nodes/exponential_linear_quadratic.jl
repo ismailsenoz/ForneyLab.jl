@@ -63,7 +63,7 @@ using ForwardDiff
     b = x.params[:b]
     c = x.params[:c]
     d = x.params[:d]
-    p = 30
+    p = 20
 
     g(x) = exp(-0.5*(a*x+b*exp(c*x+d*x^2/2)))
     normalization_constant = quadrature(g,dist_y,p)
@@ -72,12 +72,6 @@ using ForwardDiff
     s(x) = (x-mean_post)^2*g(x)/normalization_constant
     var_post = quadrature(s,dist_y,p)
 
-    # println("prior mean: ", m_y, "posterior mean: ", mean)
-    # println("prior variance: ", v_y, "posterior variance: ", var)
-    #
-    # g_der(x) = -0.5*(a + b*g(x)*(c+d*x)+2*(x-m_y)/v_y)
-    # g_hes(x) = -0.5*(g(x)*b*(a^2-2*a*x*d+x^2*d+d) + 2/v_y)
-    # println("derivative ", g_der(mean)," ","hessian ", g_hes(mean))
 
     z.params[:m] = mean_post
     z.params[:v] = var_post
@@ -85,6 +79,33 @@ using ForwardDiff
 
     return z
 end
+
+
+# @symmetrical function prod!(x::ProbabilityDistribution{Univariate, ExponentialLinearQuadratic},
+#                 y::ProbabilityDistribution{Univariate, F1},
+#                 z::ProbabilityDistribution{Univariate, GaussianMeanVariance}=ProbabilityDistribution(Univariate, GaussianMeanVariance, m=0.0,v=1.0)) where F1<:Gaussian
+#
+#     dist_y = convert(ProbabilityDistribution{Univariate, GaussianMeanVariance}, y)
+#     m_y, v_y = unsafeMeanCov(dist_y)
+#     a = x.params[:a]
+#     b = x.params[:b]
+#     c = x.params[:c]
+#     d = x.params[:d]
+#
+#     g_der(x) = -0.5*(a + b*(c+d*x)*exp(c*x+d*x^2/2)+2*(x-m_y)/v_y)
+#     g_hes(x) = -0.5*(exp(c*x+d*x^2/2)*(b*d+b*(c+d*x)^2)+ 2/v_y)
+#     mean_post = m_y
+#     for i=1:100
+#         @show mean_post = mean_post - g_der(mean_post)/g_hes(mean_post)
+#     end
+#     # println("derivative ", g_der(mean_post)," ","hessian ", g_hes(mean_post))
+#
+#     @show z.params[:m] = mean_post
+#     @show z.params[:v] = -2/g_hes(mean_post)
+#
+#
+#     return z
+# end
 
 
 #
