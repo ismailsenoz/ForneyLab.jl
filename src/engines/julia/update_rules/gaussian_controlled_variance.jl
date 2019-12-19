@@ -285,8 +285,8 @@ function ruleMGaussianControlledVarianceEGDDD(msg_out::Message{ExponentialLinear
     d = msg_out.dist.params[:d]
 
     g(x) = a*x[2]+b*exp(c*x[2] + d*x[2]^2/2)+(x[1]-m_x)^2/v_x + (x[2]-x[1])^2/(A*B)
-    x0 = [m_x; m_x+sqrt(v_x)]
-    @show m,Σ = NewtonMethod(g,x0,20)
+    x0 = [m_x; m_x]
+    m,Σ = NewtonMethod(g,x0,50)
 
     return ProbabilityDistribution(Multivariate,GaussianMeanVariance,m=m,v=Σ)
 
@@ -313,8 +313,8 @@ function ruleMGaussianControlledVarianceGEDDD(msg_out::Message{F1, Univariate},
     d = msg_x.dist.params[:d]
 
     g(x) = a*x[1]+b*exp(c*x[1] + d*x[1]^2/2)+(x[2]-m_out)^2/v_out + (x[2]-x[1])^2/(A*B)
-    x0 = [m_x; m_x+sqrt(v_x)]
-    @show m,Σ = NewtonMethod(g,x0,20)
+    x0 = [m_x; m_x]
+    m,Σ = NewtonMethod(g,x0,50)
 
     return ProbabilityDistribution(Multivariate,GaussianMeanVariance,m=m,v=Σ)
 

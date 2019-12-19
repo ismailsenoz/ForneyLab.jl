@@ -146,8 +146,8 @@ function ruleMGaussianMeanPrecisionGED(
     m_out, v_out = unsafeMeanCov(msg_out.dist)
     W_bar = inv(unsafeMean(dist_prec))
     g(x) = a*x[1]+b*exp(c*x[1] + d*x[1]^2/2)+(x[2]-m_out)^2/v_out + (x[2]-x[1])^2*W_bar
-    x0 = [m_mean; m_mean+sqrt(v_mean)]
-    @show m,Σ = NewtonMethod(g,x0,20)
+    x0 = [m_mean; m_mean]
+    m,Σ = NewtonMethod(g,x0,50)
 
     return ProbabilityDistribution(Multivariate, GaussianMeanVariance,m=m,v=Σ)
 end
@@ -166,8 +166,8 @@ function ruleMGaussianMeanPrecisionEGD(
     m_mean, v_mean = unsafeMeanCov(msg_mean.dist)
     W_bar = inv(unsafeMean(dist_prec))
     g(x) = a*x[2]+b*exp(c*x[2] + d*x[2]^2/2)+(x[1]-m_mean)^2/v_mean + (x[2]-x[1])^2*W_bar
-    x0 = [m_mean; m_mean+sqrt(v_mean)]
-    @show m,Σ = NewtonMethod(g,x0,20)
+    x0 = [m_mean; m_mean]
+    m,Σ = NewtonMethod(g,x0,50)
 
     return ProbabilityDistribution(Multivariate, GaussianMeanVariance,m=m,v=Σ)
 end
