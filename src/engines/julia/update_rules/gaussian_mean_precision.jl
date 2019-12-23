@@ -134,22 +134,71 @@ function ruleSVBGaussianMeanPrecisionMEND(msg_out::Message{ExponentialLinearQuad
 
     return Message(GaussianMeanVariance, m=unsafeMean(approx_dist), v=unsafeCov(approx_dist) + cholinv(unsafeMean(dist_prec)))
 end
+# function ruleSVBGaussianMeanPrecisionOutNED(msg_out::Message{F,Univariate},
+#                                    msg_mean::Message{ExponentialLinearQuadratic},
+#                                    dist_prec::ProbabilityDistribution) where F<:Gaussian
+#
+#     msg_mean_prime = approximateDoubleExp(msg_mean)
+#     return ruleSVBGaussianMeanPrecisionOutVGD(nothing,msg_mean,dist_prec)
+# end
+#
+# function ruleSVBGaussianMeanPrecisionMEND(msg_out::Message{ExponentialLinearQuadratic},
+#                                    msg_mean::Message{F, Univariate},
+#                                    dist_prec::ProbabilityDistribution) where F<:Gaussian
+#
+#     msg_out_prime = approximateDoubleExp(msg_out)
+#     return ruleSVBGaussianMeanPrecisionOutVGD(nothing,msg_out_prime,dist_prec)
+# end
+
+# function ruleMGaussianMeanPrecisionGED(
+#     msg_out::Message{F, Univariate},
+#     msg_mean::Message{ExponentialLinearQuadratic},
+#     dist_prec::ProbabilityDistribution) where F<:Gaussian
+#
+#         a = msg_mean.dist.params[:a]
+#         b = msg_mean.dist.params[:b]
+#         c = msg_mean.dist.params[:c]
+#         d = msg_mean.dist.params[:d]
+#         m_out, v_out = unsafeMeanCov(msg_out.dist)
+#         W_bar = inv(unsafeMean(dist_prec))
+#         g(x) = a*x[1]+b*exp(c*x[1] + d*x[1]^2/2)+(x[2]-m_out)^2/v_out + (x[2]-x[1])^2*W_bar
+#         msg_mean_prime = approximateDoubleExp(msg_mean)
+#         x0 = [m_out; msg_mean_prime.dist.params[:m]]
+#         m,Σ = NewtonMethod(g,x0,1)
+#
+#     return ProbabilityDistribution(Multivariate, GaussianMeanVariance,m=m,v=Σ)
+# end
+#
+#
+#
+# function ruleMGaussianMeanPrecisionEGD(
+#     msg_out::Message{ExponentialLinearQuadratic},
+#     msg_mean::Message{F, Univariate},
+#     dist_prec::ProbabilityDistribution) where F<:Gaussian
+#
+#     a = msg_out.dist.params[:a]
+#     b = msg_out.dist.params[:b]
+#     c = msg_out.dist.params[:c]
+#     d = msg_out.dist.params[:d]
+#     m_mean, v_mean = unsafeMeanCov(msg_mean.dist)
+#
+#     W_bar = inv(unsafeMean(dist_prec))
+#     g(x) = a*x[2]+b*exp(c*x[2] + d*x[2]^2/2)+(x[1]-m_mean)^2/v_mean + (x[2]-x[1])^2*W_bar
+#     msg_out_prime = approximateDoubleExp(msg_out)
+#     x0 = [msg_out_prime.dist.params[:m]; m_mean]
+#     m,Σ = NewtonMethod(g,x0,1)
+#
+#     return ProbabilityDistribution(Multivariate, GaussianMeanVariance,m=m,v=Σ)
+# end
+
 function ruleMGaussianMeanPrecisionGED(
     msg_out::Message{F, Univariate},
     msg_mean::Message{ExponentialLinearQuadratic},
     dist_prec::ProbabilityDistribution) where F<:Gaussian
 
-    a = msg_mean.dist.params[:a]
-    b = msg_mean.dist.params[:b]
-    c = msg_mean.dist.params[:c]
-    d = msg_mean.dist.params[:d]
-    m_out, v_out = unsafeMeanCov(msg_out.dist)
-    W_bar = inv(unsafeMean(dist_prec))
-    g(x) = a*x[1]+b*exp(c*x[1] + d*x[1]^2/2)+(x[2]-m_out)^2/v_out + (x[2]-x[1])^2*W_bar
-    x0 = [m_mean; m_mean]
-    m,Σ = NewtonMethod(g,x0,50)
+    msg_mean_prime = approximateDoubleExp(msg_mean)
 
-    return ProbabilityDistribution(Multivariate, GaussianMeanVariance,m=m,v=Σ)
+    return ruleMGaussianMeanPrecisionGGD(msg_out,msg_mean_prime,dist_prec)
 end
 
 
@@ -159,17 +208,9 @@ function ruleMGaussianMeanPrecisionEGD(
     msg_mean::Message{F, Univariate},
     dist_prec::ProbabilityDistribution) where F<:Gaussian
 
-    a = msg_out.dist.params[:a]
-    b = msg_out.dist.params[:b]
-    c = msg_out.dist.params[:c]
-    d = msg_out.dist.params[:d]
-    m_mean, v_mean = unsafeMeanCov(msg_mean.dist)
-    W_bar = inv(unsafeMean(dist_prec))
-    g(x) = a*x[2]+b*exp(c*x[2] + d*x[2]^2/2)+(x[1]-m_mean)^2/v_mean + (x[2]-x[1])^2*W_bar
-    x0 = [m_mean; m_mean]
-    m,Σ = NewtonMethod(g,x0,50)
+    msg_out_prime = approximateDoubleExp(msg_out)
 
-    return ProbabilityDistribution(Multivariate, GaussianMeanVariance,m=m,v=Σ)
+    return ruleMGaussianMeanPrecisionGGD(msg_out_prime,msg_mean,dist_prec)
 end
 
 

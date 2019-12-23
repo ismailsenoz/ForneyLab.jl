@@ -17,17 +17,45 @@ ruleMGaussianControlledVarianceDGGD,
 ruleMGaussianControlledVarianceEGDDD,
 ruleMGaussianControlledVarianceGEDDD
 
+# function ruleSVBGaussianControlledVarianceMENDDD(msg_out::Message{ExponentialLinearQuadratic},
+#                                                    msg_x::Message{F, Univariate},
+#                                                    dist_z::ProbabilityDistribution{Univariate},
+#                                                    dist_κ::ProbabilityDistribution{Univariate},
+#                                                    dist_ω::ProbabilityDistribution{Univariate}) where F<:Gaussian
+#
+#     dist_out = msg_out.dist
+#     dist_x = convert(ProbabilityDistribution{Univariate,GaussianMeanVariance},msg_x.dist)
+#     approx_dist = dist_x*dist_out
+#     approx_msg = Message(Univariate,GaussianMeanVariance,m=approx_dist.params[:m],v=approx_dist.params[:v])
+#
+#     return ruleSVBGaussianControlledVarianceOutNGDDD(nothing, approx_msg,dist_z,dist_κ,dist_ω)
+# end
+#
+# function ruleSVBGaussianControlledVarianceOutNEDDD(msg_out::Message{F, Univariate},
+#                                                    msg_x::Message{ExponentialLinearQuadratic},
+#                                                    dist_z::ProbabilityDistribution{Univariate},
+#                                                    dist_κ::ProbabilityDistribution{Univariate},
+#                                                    dist_ω::ProbabilityDistribution{Univariate}) where F<:Gaussian
+#
+#
+#    dist_x = msg_x.dist
+#    dist_out = convert(ProbabilityDistribution{Univariate,GaussianMeanVariance},msg_out.dist)
+#    approx_dist = dist_x*dist_out
+#    approx_msg = Message(Univariate,GaussianMeanVariance,m=approx_dist.params[:m],v=approx_dist.params[:v])
+#
+#    return ruleSVBGaussianControlledVarianceOutNGDDD(nothing, approx_msg,dist_z,dist_κ,dist_ω)
+# end
 function ruleSVBGaussianControlledVarianceMENDDD(msg_out::Message{ExponentialLinearQuadratic},
                                                    msg_x::Message{F, Univariate},
                                                    dist_z::ProbabilityDistribution{Univariate},
                                                    dist_κ::ProbabilityDistribution{Univariate},
                                                    dist_ω::ProbabilityDistribution{Univariate}) where F<:Gaussian
 
-    dist_out = msg_out.dist
-    dist_x = convert(ProbabilityDistribution{Univariate,GaussianMeanVariance},msg_x.dist)
-    approx_dist = dist_x*dist_out
-    approx_msg = Message(Univariate,GaussianMeanVariance,m=approx_dist.params[:m],v=approx_dist.params[:v])
-
+    # msg_out_prime = approximateDoubleExp(msg_out)
+    # return ruleSVBGaussianControlledVarianceOutNGDDD(nothing,msg_out_prime,dist_z,dist_κ,dist_ω)
+    msg_out_prime = ruleSVBGaussianControlledVarianceOutNGDDD(nothing,msg_x,dist_z,dist_κ,dist_ω)
+    approx_dist = msg_out_prime.dist*msg_out.dist
+    approx_msg = Message(GaussianMeanVariance,m=approx_dist.params[:m],v=approx_dist.params[:v])
     return ruleSVBGaussianControlledVarianceOutNGDDD(nothing, approx_msg,dist_z,dist_κ,dist_ω)
 end
 
@@ -36,16 +64,14 @@ function ruleSVBGaussianControlledVarianceOutNEDDD(msg_out::Message{F, Univariat
                                                    dist_z::ProbabilityDistribution{Univariate},
                                                    dist_κ::ProbabilityDistribution{Univariate},
                                                    dist_ω::ProbabilityDistribution{Univariate}) where F<:Gaussian
-
-
-   dist_x = msg_x.dist
-   dist_out = convert(ProbabilityDistribution{Univariate,GaussianMeanVariance},msg_out.dist)
-   approx_dist = dist_x*dist_out
-   approx_msg = Message(Univariate,GaussianMeanVariance,m=approx_dist.params[:m],v=approx_dist.params[:v])
-
-   return ruleSVBGaussianControlledVarianceOutNGDDD(nothing, approx_msg,dist_z,dist_κ,dist_ω)
+    #
+    # msg_mean_prime = approximateDoubleExp(msg_mean)
+    # return ruleSVBGaussianControlledVarianceOutNGDDD(nothing,msg_mean_prime,dist_z,dist_κ,dist_ω)
+    msg_x_prime = ruleSVBGaussianControlledVarianceOutNGDDD(nothing,msg_out,dist_z,dist_κ,dist_ω)
+    approx_dist = msg_x_prime.dist*msg_x.dist
+    approx_msg = Message(GaussianMeanVariance,m=approx_dist.params[:m],v=approx_dist.params[:v])
+    return ruleSVBGaussianControlledVarianceOutNGDDD(nothing, approx_msg,dist_z,dist_κ,dist_ω)
 end
-
 
 function ruleSVBGaussianControlledVarianceOutNGDDD(dist_out::Nothing,
                                                    msg_x::Message{F, Univariate},
@@ -267,6 +293,32 @@ function ruleMGaussianControlledVarianceGGDDD(msg_out::Message{F1, Univariate},
     return ProbabilityDistribution(Multivariate, GaussianMeanPrecision, m=m, w=W)
 
 end
+# function ruleMGaussianControlledVarianceEGDDD(msg_out::Message{ExponentialLinearQuadratic},
+#                                               msg_x::Message{F1, Univariate},
+#                                               dist_z::ProbabilityDistribution{Univariate},
+#                                               dist_κ::ProbabilityDistribution{Univariate},
+#                                               dist_ω::ProbabilityDistribution{Univariate}) where {F1 <: Gaussian}
+#     msg_out_prime = approximateDoubleExp(msg_out)
+#
+#     return ruleMGaussianControlledVarianceGGDDD(msg_out_prime,msg_x,dist_z,dist_κ,dist_ω)
+#
+# end
+#
+#
+# function ruleMGaussianControlledVarianceGEDDD(msg_out::Message{F1, Univariate},
+#                                               msg_x::Message{ExponentialLinearQuadratic},
+#                                               dist_z::ProbabilityDistribution{Univariate},
+#                                               dist_κ::ProbabilityDistribution{Univariate},
+#                                               dist_ω::ProbabilityDistribution{Univariate}) where {F1 <: Gaussian}
+#
+#
+#
+#     msg_x_prime = approximateDoubleExp(msg_x)
+#
+#     return ruleMGaussianControlledVarianceGGDDD(msg_out,msg_x_prime,dist_z,dist_κ,dist_ω)
+#
+# end
+
 function ruleMGaussianControlledVarianceEGDDD(msg_out::Message{ExponentialLinearQuadratic},
                                               msg_x::Message{F1, Univariate},
                                               dist_z::ProbabilityDistribution{Univariate},
@@ -285,8 +337,9 @@ function ruleMGaussianControlledVarianceEGDDD(msg_out::Message{ExponentialLinear
     d = msg_out.dist.params[:d]
 
     g(x) = a*x[2]+b*exp(c*x[2] + d*x[2]^2/2)+(x[1]-m_x)^2/v_x + (x[2]-x[1])^2/(A*B)
-    x0 = [m_x; m_x]
-    m,Σ = NewtonMethod(g,x0,50)
+    msg_out_prime = approximateDoubleExp(msg_out)
+    x0 = [msg_out_prime.dist.params[:m]; m_x]
+    m,Σ = NewtonMethod(g,x0,1)
 
     return ProbabilityDistribution(Multivariate,GaussianMeanVariance,m=m,v=Σ)
 
@@ -313,13 +366,13 @@ function ruleMGaussianControlledVarianceGEDDD(msg_out::Message{F1, Univariate},
     d = msg_x.dist.params[:d]
 
     g(x) = a*x[1]+b*exp(c*x[1] + d*x[1]^2/2)+(x[2]-m_out)^2/v_out + (x[2]-x[1])^2/(A*B)
-    x0 = [m_x; m_x]
-    m,Σ = NewtonMethod(g,x0,50)
+    msg_x_prime = approximateDoubleExp(msg_x)
+    x0 = [m_out;msg_x_prime.dist.params[:m]]
+    m,Σ = NewtonMethod(g,x0,1)
 
     return ProbabilityDistribution(Multivariate,GaussianMeanVariance,m=m,v=Σ)
 
 end
-
 
 function ruleMGaussianControlledVarianceGGDD(msg_out::Message{F1, Univariate},
                                               msg_x::Message{F2, Univariate},
