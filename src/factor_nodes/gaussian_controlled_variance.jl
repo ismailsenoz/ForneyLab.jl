@@ -1,5 +1,5 @@
 using FastGaussQuadrature
-using ForwardDiff
+using ForwardDiff, HCubature
 export GaussianControlledVariance
 
 """
@@ -107,6 +107,17 @@ function NewtonMethod(g::Function,x_0::Array{Float64},n_its::Int64)
         x = x_0 - inv(hessian)*grad
         x_0 = x
     end
-    var = 2*inv(ForwardDiff.hessian(g,x))
+    var = inv(ForwardDiff.hessian(g,x))./2
     return x, var
+end
+
+function multivariateNormalApproximation(g::Function,x_min,x_max)
+
+    normalization = HCubature.hcubature(g,x_min,x_max)[1]
+    f(x) = x.* g(x)/normalization
+    m = HCubature.hcubature(f,x_min,x_max)[1]
+    h(x) = (x-m)*(x-m)'*g(x)/normalization
+    v = HCubature.hcubature(h,x_min,x_max)[1]
+
+    return Array(m), Array(v)
 end

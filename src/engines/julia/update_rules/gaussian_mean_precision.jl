@@ -120,7 +120,7 @@ function ruleSVBGaussianMeanPrecisionOutNED(msg_out::Message{F,Univariate},
     dist_prior = convert(ProbabilityDistribution{Univariate, GaussianMeanVariance},message_prior.dist)
     approx_dist = dist_prior*msg_mean.dist
 
-    return Message(GaussianMeanVariance, m=unsafeMean(approx_dist), v=unsafeCov(approx_dist) + cholinv(unsafeMean(dist_prec)))
+    return Message(GaussianMeanVariance, m=unsafeMean(approx_dist), v=unsafeCov(approx_dist))
 end
 
 function ruleSVBGaussianMeanPrecisionMEND(msg_out::Message{ExponentialLinearQuadratic},
@@ -132,7 +132,7 @@ function ruleSVBGaussianMeanPrecisionMEND(msg_out::Message{ExponentialLinearQuad
     dist_prior = convert(ProbabilityDistribution{Univariate, GaussianMeanVariance},message_prior.dist)
     approx_dist = dist_prior*msg_out.dist
 
-    return Message(GaussianMeanVariance, m=unsafeMean(approx_dist), v=unsafeCov(approx_dist) + cholinv(unsafeMean(dist_prec)))
+    return Message(GaussianMeanVariance, m=unsafeMean(approx_dist), v=unsafeCov(approx_dist))
 end
 # function ruleSVBGaussianMeanPrecisionOutNED(msg_out::Message{F,Univariate},
 #                                    msg_mean::Message{ExponentialLinearQuadratic},
@@ -160,17 +160,35 @@ end
 #         c = msg_mean.dist.params[:c]
 #         d = msg_mean.dist.params[:d]
 #         m_out, v_out = unsafeMeanCov(msg_out.dist)
-#         W_bar = inv(unsafeMean(dist_prec))
-#         g(x) = a*x[1]+b*exp(c*x[1] + d*x[1]^2/2)+(x[2]-m_out)^2/v_out + (x[2]-x[1])^2*W_bar
+#         W_bar = unsafeMean(dist_prec)
+#         g(x) = a*x[2]+b*exp(c*x[2] + d*x[2]^2/2)+(x[1]-m_out)^2/v_out + (x[1]-x[2])^2*W_bar
 #         msg_mean_prime = approximateDoubleExp(msg_mean)
 #         x0 = [m_out; msg_mean_prime.dist.params[:m]]
-#         m,Σ = NewtonMethod(g,x0,1)
+#         m,Σ = NewtonMethod(g,x0,10)
 #
 #     return ProbabilityDistribution(Multivariate, GaussianMeanVariance,m=m,v=Σ)
 # end
 #
-#
-#
+function ruleMGaussianMeanPrecisionEGD(
+    msg_out::Message{ExponentialLinearQuadratic},
+    msg_mean::Message{F, Univariate},
+    dist_prec::ProbabilityDistribution) where F<:Gaussian
+
+    a = msg_out.dist.params[:a]
+    b = msg_out.dist.params[:b]
+    c = msg_out.dist.params[:c]
+    d = msg_out.dist.params[:d]
+    m_mean, v_mean = unsafeMeanCov(msg_mean.dist)
+
+    W_bar = unsafeMean(dist_prec)
+    g(x) = a*x[1]+b*exp(c*x[1] + d*x[1]^2/2)+(x[2]-m_mean)^2/v_mean + (x[1]-x[2])^2*W_bar
+    msg_out_prime = approximateDoubleExp(msg_out)
+    x0 = [msg_out_prime.dist.params[:m]; m_mean]
+    m,Σ = NewtonMethod(g,x0,1)
+
+    return ProbabilityDistribution(Multivariate, GaussianMeanVariance,m=m,v=Σ)
+end
+
 # function ruleMGaussianMeanPrecisionEGD(
 #     msg_out::Message{ExponentialLinearQuadratic},
 #     msg_mean::Message{F, Univariate},
@@ -182,36 +200,34 @@ end
 #     d = msg_out.dist.params[:d]
 #     m_mean, v_mean = unsafeMeanCov(msg_mean.dist)
 #
-#     W_bar = inv(unsafeMean(dist_prec))
-#     g(x) = a*x[2]+b*exp(c*x[2] + d*x[2]^2/2)+(x[1]-m_mean)^2/v_mean + (x[2]-x[1])^2*W_bar
-#     msg_out_prime = approximateDoubleExp(msg_out)
-#     x0 = [msg_out_prime.dist.params[:m]; m_mean]
-#     m,Σ = NewtonMethod(g,x0,1)
+#     W_bar = unsafeMean(dist_prec)
+#     g(x) = exp(-0.5*(a*x[1]+b*exp(c*x[1] + d*x[1]^2/2)+(x[2]-m_mean)^2/v_mean + (x[1]-x[2])^2*W_bar))
+#     m,Σ = multivariateNormalApproximation(g,[-50.0; -50.0],[10; 10])
 #
-#     return ProbabilityDistribution(Multivariate, GaussianMeanVariance,m=m,v=Σ)
+#     return ProbabilityDistribution(Multivariate, GaussianMeanVariance,m=m,v=Σ+1e-8*diageye(2))
 # end
 
-function ruleMGaussianMeanPrecisionGED(
-    msg_out::Message{F, Univariate},
-    msg_mean::Message{ExponentialLinearQuadratic},
-    dist_prec::ProbabilityDistribution) where F<:Gaussian
-
-    msg_mean_prime = approximateDoubleExp(msg_mean)
-
-    return ruleMGaussianMeanPrecisionGGD(msg_out,msg_mean_prime,dist_prec)
-end
-
-
-
-function ruleMGaussianMeanPrecisionEGD(
-    msg_out::Message{ExponentialLinearQuadratic},
-    msg_mean::Message{F, Univariate},
-    dist_prec::ProbabilityDistribution) where F<:Gaussian
-
-    msg_out_prime = approximateDoubleExp(msg_out)
-
-    return ruleMGaussianMeanPrecisionGGD(msg_out_prime,msg_mean,dist_prec)
-end
+# function ruleMGaussianMeanPrecisionGED(
+#     msg_out::Message{F, Univariate},
+#     msg_mean::Message{ExponentialLinearQuadratic},
+#     dist_prec::ProbabilityDistribution) where F<:Gaussian
+#
+#     msg_mean_prime = approximateDoubleExp(msg_mean)
+#
+#     return ruleMGaussianMeanPrecisionGGD(msg_out,msg_mean_prime,dist_prec)
+# end
+#
+#
+#
+# function ruleMGaussianMeanPrecisionEGD(
+#     msg_out::Message{ExponentialLinearQuadratic},
+#     msg_mean::Message{F, Univariate},
+#     dist_prec::ProbabilityDistribution) where F<:Gaussian
+#
+#     msg_out_prime = approximateDoubleExp(msg_out)
+#
+#     return ruleMGaussianMeanPrecisionGGD(msg_out_prime,msg_mean,dist_prec)
+# end
 
 
 # ###Custom inbounds

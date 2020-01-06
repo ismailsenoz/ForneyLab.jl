@@ -44,7 +44,7 @@ ProbabilityDistribution(::Type{ExponentialLinearQuadratic}; a=1.0,b=1.0,c=1.0,d=
 using FastGaussQuadrature
 using LinearAlgebra
 using ForwardDiff
-using Cubature
+using Cubature, HCubature
 
 # function kldiv(d1::ProbabilityDistribution,d2::ProbabilityDistribution)
 #     (m1,v1) = unsafeMeanCov(d1)
@@ -53,48 +53,6 @@ using Cubature
 #     return 0.5*log(v2/v1) + (v1+(m1-m2)^2)/(2*v2) - 0.5
 #
 # end
-
-@symmetrical function prod!(x::ProbabilityDistribution{Univariate, ExponentialLinearQuadratic},
-                y::ProbabilityDistribution{Univariate, F1},
-                z::ProbabilityDistribution{Univariate, GaussianMeanVariance}=ProbabilityDistribution(Univariate, GaussianMeanVariance, m=0.0,v=1.0)) where F1<:Gaussian
-
-    dist_y = convert(ProbabilityDistribution{Univariate, GaussianMeanVariance}, y)
-    m_y, v_y = unsafeMeanCov(dist_y)
-    a = x.params[:a]
-    b = x.params[:b]
-    c = x.params[:c]
-    d = x.params[:d]
-    x_min = m_y-100.0
-    x_max = m_y+100
-
-    g(x) = exp(-0.5*(a*x+b*exp(c*x+d*x^2/2)))*exp(-0.5*(x-m_y)^2/v_y)
-    normalization = hquadrature(g,x_min,x_max)[1]
-    f(x) = x.* g(x)./ normalization
-    m = hquadrature(f,x_min,x_max)[1]
-    h(x) = (x.- m).^2 .* g(x)./ normalization
-    v = hquadrature(h,x_min,x_max)[1]
-
-
-    z.params[:m] = m
-    z.params[:v] = v
-
-    return z
-end
-
-function approximateDoubleExp(msg::Message{ExponentialLinearQuadratic})
-    a = msg.dist.params[:a]
-    b = msg.dist.params[:b]
-    c = msg.dist.params[:c]
-    d = msg.dist.params[:d]
-    g(x) = exp(-0.5*(a*x+b*exp(c*x+d*x^2/2)))
-    norm_const = hquadrature(g,-100.0,100.0)[1]
-    f(x) = x.* g(x)./ norm_const
-    m = hquadrature(f,-100.0,100.0)[1]
-    h(x) = (x.- m).^2 .* g(x)./ norm_const
-    v = hquadrature(h,-100.0,100.0)[1]
-
-    return Message(GaussianMeanVariance,m=m,v=v)
-end
 
 # @symmetrical function prod!(x::ProbabilityDistribution{Univariate, ExponentialLinearQuadratic},
 #                 y::ProbabilityDistribution{Univariate, F1},
@@ -106,22 +64,64 @@ end
 #     b = x.params[:b]
 #     c = x.params[:c]
 #     d = x.params[:d]
-#     p = 20
+#     x_min = m_y-100.0
+#     x_max = m_y+100
 #
-#     g(x) = exp(-0.5*(a*x+b*exp(c*x+d*x^2/2)))
-#     normalization_constant = quadrature(g,dist_y,p)
-#     t(x) = x*g(x)/normalization_constant
-#     mean_post = quadrature(t,dist_y,p)
-#     s(x) = (x-mean_post)^2*g(x)/normalization_constant
-#     var_post = quadrature(s,dist_y,p)
+#     g(x) = exp(-0.5*(a*x+b*exp(c*x+d*x^2/2)))*exp(-0.5*(x-m_y)^2/v_y)
+#     normalization = hquadrature(g,x_min,x_max)[1]
+#     f(x) = x.* g(x)./ normalization
+#     m = hquadrature(f,x_min,x_max)[1]
+#     h(x) = (x.- m).^2 .* g(x)./ normalization
+#     v = hquadrature(h,x_min,x_max)[1]
 #
 #
-#     z.params[:m] = mean_post
-#     z.params[:v] = var_post
-#
+#     z.params[:m] = m
+#     z.params[:v] = v
 #
 #     return z
 # end
+
+function approximateDoubleExp(msg::Message{ExponentialLinearQuadratic})
+    a = msg.dist.params[:a]
+    b = msg.dist.params[:b]
+    c = msg.dist.params[:c]
+    d = msg.dist.params[:d]
+    g(x) = exp(-0.5*(a*x+b*exp(c*x+d*x^2/2)))
+    norm_const = HCubature.hquadrature(g,-100.0,100.0)[1]
+    f(x) = x.* g(x)./ norm_const
+    m = HCubature.hquadrature(f,-100.0,100.0)[1]
+    h(x) = (x.- m).^2 .* g(x)./ norm_const
+    v = HCubature.hquadrature(h,-100.0,100.0)[1]
+
+    return Message(GaussianMeanVariance,m=m,v=v)
+end
+
+@symmetrical function prod!(x::ProbabilityDistribution{Univariate, ExponentialLinearQuadratic},
+                y::ProbabilityDistribution{Univariate, F1},
+                z::ProbabilityDistribution{Univariate, GaussianMeanVariance}=ProbabilityDistribution(Univariate, GaussianMeanVariance, m=0.0,v=1.0)) where F1<:Gaussian
+
+    dist_y = convert(ProbabilityDistribution{Univariate, GaussianMeanVariance}, y)
+    m_y, v_y = unsafeMeanCov(dist_y)
+    a = x.params[:a]
+    b = x.params[:b]
+    c = x.params[:c]
+    d = x.params[:d]
+    p = 20
+
+    g(x) = exp(-0.5*(a*x+b*exp(c*x+d*x^2/2)))
+    normalization_constant = quadrature(g,dist_y,p)
+    t(x) = x*g(x)/normalization_constant
+    mean_post = quadrature(t,dist_y,p)
+    s(x) = (x-mean_post)^2*g(x)/normalization_constant
+    var_post = quadrature(s,dist_y,p)
+
+
+    z.params[:m] = mean_post
+    z.params[:v] = var_post
+
+
+    return z
+end
 
 
 # @symmetrical function prod!(x::ProbabilityDistribution{Univariate, ExponentialLinearQuadratic},
