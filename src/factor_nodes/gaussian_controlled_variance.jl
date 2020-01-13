@@ -107,7 +107,7 @@ function NewtonMethod(g::Function,x_0::Array{Float64},n_its::Int64)
         x = x_0 - inv(hessian)*grad
         x_0 = x
     end
-    var = inv(ForwardDiff.hessian(g,x))./2
+    var = inv(ForwardDiff.hessian(g,x))
     return x, var
 end
 
