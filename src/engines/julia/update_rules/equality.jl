@@ -7,7 +7,7 @@ ruleSPEqualityCategorical,
 ruleSPEqualityDirichlet,
 ruleSPEqualityPointMass,
 ruleSPEqualityRGMP,
-ruleSPEqualityGaussianRGMP
+ruleSPEqualityGaussianRGMP,
 ruleSPEqualityGaussianGCV
 
 

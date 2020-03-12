@@ -231,39 +231,77 @@ end
 
 
 # ###Custom inbounds
-function collectStructuredVariationalNodeInbounds(node::GaussianMeanPrecision, entry::ScheduleEntry, interface_to_msg_idx::Dict{Interface, Int})
-    # Collect inbounds
-    inbounds = String[]
-    entry_recognition_factor_id = recognitionFactorId(entry.interface.edge)
-    local_cluster_ids = localRecognitionFactorization(entry.interface.node)
+# function collectStructuredVariationalNodeInbounds(node::GaussianMeanPrecision, entry::ScheduleEntry, interface_to_msg_idx::Dict{Interface, Int})
+#     # Collect inbounds
+#     inbounds = String[]
+#     entry_recognition_factor_id = recognitionFactorId(entry.interface.edge)
+#     local_cluster_ids = localRecognitionFactorization(entry.interface.node)
+#
+#     recognition_factor_ids = Symbol[] # Keep track of encountered recognition factor ids
+#     for node_interface in entry.interface.node.interfaces
+#         inbound_interface = ultimatePartner(node_interface)
+#         node_interface_recognition_factor_id = recognitionFactorId(node_interface.edge)
+#
+#         if node_interface == entry.interface
+#             # Ignore marginal of outbound edge
+#             if (entry.msg_update_rule == SVBGaussianMeanPrecisionOutNED) || (entry.msg_update_rule == SVBGaussianMeanPrecisionMEND)
+#                 inbound_idx = interface_to_msg_idx[inbound_interface]
+#                 push!(inbounds, "messages[$inbound_idx]")
+#             else
+#                 push!(inbounds, "nothing")
+#             end
+#         elseif (inbound_interface != nothing) && isa(inbound_interface.node, Clamp)
+#             # Hard-code marginal of constant node in schedule
+#             push!(inbounds, marginalString(inbound_interface.node))
+#         elseif node_interface_recognition_factor_id == entry_recognition_factor_id
+#             # Collect message from previous result
+#             inbound_idx = interface_to_msg_idx[inbound_interface]
+#             push!(inbounds, "messages[$inbound_idx]")
+#         elseif !(node_interface_recognition_factor_id in recognition_factor_ids)
+#             # Collect marginal from marginal dictionary (if marginal is not already accepted)
+#             marginal_idx = local_cluster_ids[node_interface_recognition_factor_id]
+#             push!(inbounds, "marginals[:$marginal_idx]")
+#         end
+#
+#         push!(recognition_factor_ids, node_interface_recognition_factor_id)
+#     end
+#
+#     return inbounds
+# end
 
-    recognition_factor_ids = Symbol[] # Keep track of encountered recognition factor ids
+function collectStructuredVariationalNodeInbounds(node::GaussianMeanPrecision, entry::ScheduleEntry)
+    interface_to_schedule_entry = current_inference_algorithm.interface_to_schedule_entry
+    target_to_marginal_entry = current_inference_algorithm.target_to_marginal_entry
+
+    inbounds = Any[]
+    entry_posterior_factor = PosteriorFactor(entry.interface.edge)
+    local_clusters = localPosteriorFactorization(entry.interface.node)
+
+    posterior_factors = Union{PosteriorFactor, Edge}[] # Keep track of encountered posterior factors
     for node_interface in entry.interface.node.interfaces
         inbound_interface = ultimatePartner(node_interface)
-        node_interface_recognition_factor_id = recognitionFactorId(node_interface.edge)
+        node_interface_posterior_factor = PosteriorFactor(node_interface.edge)
 
-        if node_interface == entry.interface
-            # Ignore marginal of outbound edge
-            if (entry.msg_update_rule == SVBGaussianMeanPrecisionOutNED) || (entry.msg_update_rule == SVBGaussianMeanPrecisionMEND)
-                inbound_idx = interface_to_msg_idx[inbound_interface]
-                push!(inbounds, "messages[$inbound_idx]")
+        if node_interface === entry.interface
+            if (entry.message_update_rule == SVBGaussianMeanPrecisionOutNED) || (entry.message_update_rule == SVBGaussianMeanPrecisionMEND)
+                push!(inbounds, interface_to_schedule_entry[inbound_interface])
             else
-                push!(inbounds, "nothing")
+                # Ignore marginal of outbound edge
+                push!(inbounds, nothing)
             end
         elseif (inbound_interface != nothing) && isa(inbound_interface.node, Clamp)
             # Hard-code marginal of constant node in schedule
-            push!(inbounds, marginalString(inbound_interface.node))
-        elseif node_interface_recognition_factor_id == entry_recognition_factor_id
+            push!(inbounds, assembleClamp!(inbound_interface.node, ProbabilityDistribution))
+        elseif node_interface_posterior_factor === entry_posterior_factor
             # Collect message from previous result
-            inbound_idx = interface_to_msg_idx[inbound_interface]
-            push!(inbounds, "messages[$inbound_idx]")
-        elseif !(node_interface_recognition_factor_id in recognition_factor_ids)
+            push!(inbounds, interface_to_schedule_entry[inbound_interface])
+        elseif !(node_interface_posterior_factor in posterior_factors)
             # Collect marginal from marginal dictionary (if marginal is not already accepted)
-            marginal_idx = local_cluster_ids[node_interface_recognition_factor_id]
-            push!(inbounds, "marginals[:$marginal_idx]")
+            target = local_clusters[node_interface_posterior_factor]
+            push!(inbounds, target_to_marginal_entry[target])
         end
 
-        push!(recognition_factor_ids, node_interface_recognition_factor_id)
+        push!(posterior_factors, node_interface_posterior_factor)
     end
 
     return inbounds

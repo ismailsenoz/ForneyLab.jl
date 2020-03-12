@@ -77,7 +77,11 @@ function isApplicable(::Type{SPEqualityGaussianRGMP}, input_types::Vector{Type})
         end
     end
 
+<<<<<<< HEAD
     return (nothing_inputs == 1) && (function_inputs == 1) && (gaussian_inputs == 1)
+=======
+    return (Nothing_inputs == 1) && (function_inputs == 1) && (gaussian_inputs == 1)
+>>>>>>> minor upgrades outdated functions
 end
 
 mutable struct SPEqualityGaussianGCV <: SumProductRule{Equality} end
