@@ -458,8 +458,7 @@ function collectStructuredVariationalNodeInbounds(::GaussianControlledVariance, 
 
         if node_interface === entry.interface
             # Ignore marginal of outbound edge
-            if entry.msg_update_rule in [SVBGaussianControlledVarianceΚDGGD,SVBGaussianControlledVarianceZDGGD,SVBGaussianControlledVarianceOutNEDDD,SVBGaussianControlledVarianceMENDDD]
-                inbound_idx = interface_to_msg_idx[inbound_interface]
+            if entry.message_update_rule in [SVBGaussianControlledVarianceΚDGGD,SVBGaussianControlledVarianceZDGGD,SVBGaussianControlledVarianceOutNEDDD,SVBGaussianControlledVarianceMENDDD]
                 push!(inbounds, interface_to_schedule_entry[inbound_interface])
             else
                 push!(inbounds, nothing)
