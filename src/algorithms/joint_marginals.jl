@@ -76,27 +76,12 @@ Returns a vector with inbound types that correspond with required interfaces.
 """
 function collectInboundTypes(inbound_cluster::Cluster, outbound_types::Dict{Interface, Type})
     inbound_types = Type[]
-<<<<<<< HEAD:src/algorithms/joint_marginals.jl
     inbound_cluster_pf = posteriorFactor(first(inbound_cluster.edges))
     encountered_external_regions = Set{Region}()
     for node_interface in inbound_cluster.node.interfaces
         current_region = region(inbound_cluster.node, node_interface.edge) # Returns a Variable if no cluster is assigned
         current_pf = posteriorFactor(node_interface.edge) # Returns an Edge if no posterior factor is assigned
         inbound_interface = ultimatePartner(node_interface)
-=======
-    cluster_posterior_factor = PosteriorFactor(first(cluster.edges)) # posterior factor for cluster
-    posterior_factors = Union{PosteriorFactor, Edge}[] # Keep track of encountered posterior factors
-    for node_interface in cluster.node.interfaces
-        node_interface_posterior_factor = PosteriorFactor(node_interface.edge) # Note: edges that are not assigned to a posterior factor are assumed mean-field
-
-        if node_interface_posterior_factor === cluster_posterior_factor
-            # Edge is internal, accept message
-            push!(inbound_types, outbound_types[node_interface.partner])
-        elseif !(node_interface_posterior_factor in posterior_factors)
-            # Edge is external, accept marginal (if marginal is not already accepted)
-            push!(inbound_types, ProbabilityDistribution)
-        end
->>>>>>> finish update rules for q(x,kappa) and modifications to FL node and functions:src/algorithms/variational_bayes/joint_marginals.jl
 
         if (current_pf === inbound_cluster_pf) && (node_interface.edge in inbound_cluster.edges)
             # Edge is internal and in cluster, accept message
@@ -186,7 +171,7 @@ function collectMarginalNodeInbounds(::FactorNode, entry::MarginalEntry)
     entry_pf = posteriorFactor(first(entry.target.edges))
     encountered_external_regions = Set{Region}()
     for node_interface in entry.target.node.interfaces
-        current_region = region(inbound_cluster.node, node_interface.edge) # Note: edges that are not assigned to a posterior factor are assumed mean-field 
+        current_region = region(inbound_cluster.node, node_interface.edge) # Note: edges that are not assigned to a posterior factor are assumed mean-field
         current_pf = posteriorFactor(node_interface.edge) # Returns an Edge if no posterior factor is assigned
         inbound_interface = ultimatePartner(node_interface)
 
