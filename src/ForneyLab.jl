@@ -60,7 +60,8 @@ include("factor_nodes/nonlinear.jl")
 include("factor_nodes/dot_product.jl")
 include("factor_nodes/poisson.jl")
 include("factor_nodes/sample_list.jl")
-
+include("factor_nodes/gaussian_controlled_variance.jl")
+include("factor_nodes/exponential_linear_quadratic.jl")
 
 # Factor graph
 include("factor_graph.jl")
@@ -72,9 +73,6 @@ include("factor_nodes/composite.jl")
 include("algorithms/cluster.jl")
 include("message_passing.jl")
 include("marginals.jl")
-
-include("factor_nodes/gaussian_controlled_variance.jl")
-include("factor_nodes/exponential_linear_quadratic.jl")
 
 # Utils
 include("visualization.jl")
