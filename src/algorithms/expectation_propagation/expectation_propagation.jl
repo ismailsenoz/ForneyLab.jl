@@ -6,7 +6,7 @@ expectationPropagationAlgorithm,
 """
 Create a sum-product algorithm to infer marginals over `variables`, and compile it to Julia code
 """
-function expectationPropagationAlgorithm(variables::Vector{Variable}; 
+function expectationPropagationAlgorithm(variables::Vector{Variable};
                                          id=Symbol(""),
                                          free_energy=false)
 
@@ -22,19 +22,12 @@ function expectationPropagationAlgorithm(variables::Vector{Variable};
     schedule = expectationPropagationSchedule(pf)
     pf.schedule = condense(flatten(schedule)) # Inline all internal message passing and remove clamp node entries
     pf.marginal_table = marginalTable(variables)
-<<<<<<< HEAD
-    
+
     # Populate fields for algorithm compilation
     algo = InferenceAlgorithm(pfz, id=id)
     assembleInferenceAlgorithm!(algo)
     free_energy && assembleFreeEnergy!(algo)
-    
-=======
 
-    algo = InferenceAlgorithm(pfz, id)
-    assembleInferenceAlgorithm!(algo)
-
->>>>>>> finish update rules for q(x,kappa) and modifications to FL node and functions
     return algo
 end
 expectationPropagationAlgorithm(variable::Variable; id=Symbol(""), free_energy=false) = expectationPropagationAlgorithm([variable], id=id, free_energy=free_energy)
@@ -46,20 +39,14 @@ abstract type ExpectationPropagationRule{factor_type} <: MessageUpdateRule end
 
 """
 `expectationPropagationSchedule()` generates a expectation propagation
-<<<<<<< HEAD
-message passing schedule. 
-""" 
-function expectationPropagationSchedule(pf::PosteriorFactor)
-=======
 message passing schedule.
 """
-function expectationPropagationSchedule(variables::Vector{Variable})
->>>>>>> finish update rules for q(x,kappa) and modifications to FL node and functions
+function expectationPropagationSchedule(pf::PosteriorFactor)
     ep_sites = collectEPSites(nodes(current_graph))
     breaker_sites = Interface[site.partner for site in ep_sites]
     breaker_types = breakerTypes(breaker_sites)
 
-    schedule = summaryPropagationSchedule(sort(collect(pf.target_variables), rev=true), 
+    schedule = summaryPropagationSchedule(sort(collect(pf.target_variables), rev=true),
                                           sort(collect(pf.target_clusters), rev=true);
                                           target_sites=[breaker_sites; ep_sites])
 

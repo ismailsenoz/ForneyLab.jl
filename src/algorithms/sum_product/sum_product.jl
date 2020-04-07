@@ -6,7 +6,6 @@ sumProductAlgorithm,
 """
 Create a sum-product algorithm to infer marginals over `variables`
 """
-<<<<<<< HEAD
 function sumProductAlgorithm(variables::Vector{Variable};
                              id=Symbol(""),
                              free_energy=false)
@@ -14,19 +13,11 @@ function sumProductAlgorithm(variables::Vector{Variable};
     # Initialize empty posterior factorization
     pfz = PosteriorFactorization()
     # Contain the entire graph in a single posterior factor
-=======
-function sumProductAlgorithm(
-    variables::Vector{Variable},
-    pfz::PosteriorFactorization=currentPosteriorFactorization(),
-    id=Symbol(""))
-
-    # Initialize a container posterior factor
->>>>>>> finish update rules for q(x,kappa) and modifications to FL node and functions
     pf = PosteriorFactor(pfz, id=Symbol(""))
-    
+
     # Set the target regions (variables and clusters) of the posterior factor
     setTargets!(pf, pfz, variables, free_energy=free_energy, external_targets=false)
-    
+
     # Infer schedule and marginal computations
     schedule = sumProductSchedule(pf) # For free energy computation, additional targets might be required
     pf.schedule = condense(flatten(schedule)) # Inline all internal message passing and remove clamp node entries from schedule
@@ -35,10 +26,7 @@ function sumProductAlgorithm(
     # Populate fields for algorithm compilation
     algo = InferenceAlgorithm(pfz, id=id)
     assembleInferenceAlgorithm!(algo)
-<<<<<<< HEAD
     free_energy && assembleFreeEnergy!(algo)
-=======
->>>>>>> finish update rules for q(x,kappa) and modifications to FL node and functions
 
     return algo
 end
@@ -51,17 +39,11 @@ abstract type SumProductRule{factor_type} <: MessageUpdateRule end
 
 """
 `sumProductSchedule()` generates a sum-product message passing schedule that
-<<<<<<< HEAD
 computes the marginals for each of the posterior factor targets.
-""" 
-function sumProductSchedule(pf::PosteriorFactor)
-=======
-computes the marginals for each of the argument variables.
 """
-function sumProductSchedule(variables::Vector{Variable})
->>>>>>> finish update rules for q(x,kappa) and modifications to FL node and functions
+function sumProductSchedule(pf::PosteriorFactor)
     # Generate a feasible summary propagation schedule
-    schedule = summaryPropagationSchedule(sort(collect(pf.target_variables), rev=true), 
+    schedule = summaryPropagationSchedule(sort(collect(pf.target_variables), rev=true),
                                           sort(collect(pf.target_clusters), rev=true))
 
     # Assign the sum-product update rule to each of the schedule entries

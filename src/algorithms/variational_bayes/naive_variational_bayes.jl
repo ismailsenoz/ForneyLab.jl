@@ -6,9 +6,8 @@ variationalAlgorithm,
 """
 Create a variational algorithm to infer marginals over a posterior distribution, and compile it to Julia code
 """
-<<<<<<< HEAD
-function variationalAlgorithm(pfz::PosteriorFactorization=currentPosteriorFactorization(); 
-                              id=Symbol(""), 
+function variationalAlgorithm(pfz::PosteriorFactorization=currentPosteriorFactorization();
+                              id=Symbol(""),
                               free_energy=false)
 
     (length(pfz.posterior_factors) > 0) || error("No factors defined on posterior factorization.")
@@ -20,13 +19,6 @@ function variationalAlgorithm(pfz::PosteriorFactorization=currentPosteriorFactor
 
     # Infer schedule and marginal computations for each posterior factor
     for (_, pf) in pfz.posterior_factors
-=======
-function variationalAlgorithm(
-    pfz::PosteriorFactorization=currentPosteriorFactorization(),
-    id=Symbol(""))
-
-    for (_, pf) in pfz
->>>>>>> finish update rules for q(x,kappa) and modifications to FL node and functions
         schedule = variationalSchedule(pf)
         pf.schedule = condense(flatten(schedule)) # Inline all internal message passing and remove clamp node entries
         pf.marginal_table = marginalTable(pf)
@@ -60,8 +52,8 @@ function variationalSchedule(posterior_factor::PosteriorFactor)
     nodes_connected_to_external_edges = nodesConnectedToExternalEdges(posterior_factor)
 
     # Schedule messages towards posterior factors and target sites, limited to the internal edges
-    schedule = summaryPropagationSchedule(sort(collect(posterior_factor.target_variables), rev=true), 
-                                          sort(collect(posterior_factor.target_clusters), rev=true), 
+    schedule = summaryPropagationSchedule(sort(collect(posterior_factor.target_variables), rev=true),
+                                          sort(collect(posterior_factor.target_clusters), rev=true),
                                           limit_set=posterior_factor.internal_edges)
     for entry in schedule
         if (entry.interface.node in nodes_connected_to_external_edges) && !isa(entry.interface.node, DeltaFactor)
