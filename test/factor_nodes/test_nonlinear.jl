@@ -102,7 +102,7 @@ end
 @testset "SPNonlinearUTOutNG" begin
     @test SPNonlinearUTOutNG <: SumProductRule{Nonlinear{Unscented}}
     @test outboundType(SPNonlinearUTOutNG) == Message{GaussianMeanVariance}
-    @test isApplicable(SPNonlinearUTOutNG, [Nothing, Message{Gaussian}]) 
+    @test isApplicable(SPNonlinearUTOutNG, [Nothing, Message{Gaussian}])
 
     @test ruleSPNonlinearUTOutNG(g, nothing, Message(Univariate, GaussianMeanVariance, m=2.0, v=3.0)) == Message(Univariate, GaussianMeanVariance, m=2.0000000001164153, v=66.00000000093132)
     @test ruleSPNonlinearUTOutNG(g, nothing, Message(Univariate, GaussianMeanVariance, m=2.0, v=3.0), alpha=1.0) == Message(Univariate, GaussianMeanVariance, m=2.0, v=66.0)
@@ -113,9 +113,9 @@ end
 @testset "SPNonlinearUTOutNGX" begin
     @test SPNonlinearUTOutNGX <: SumProductRule{Nonlinear{Unscented}}
     @test outboundType(SPNonlinearUTOutNGX) == Message{GaussianMeanVariance}
-    @test !isApplicable(SPNonlinearUTOutNGX, [Nothing, Message{Gaussian}]) 
-    @test isApplicable(SPNonlinearUTOutNGX, [Nothing, Message{Gaussian}, Message{Gaussian}]) 
-    @test !isApplicable(SPNonlinearUTOutNGX, [Message{Gaussian}, Nothing, Message{Gaussian}]) 
+    @test !isApplicable(SPNonlinearUTOutNGX, [Nothing, Message{Gaussian}])
+    @test isApplicable(SPNonlinearUTOutNGX, [Nothing, Message{Gaussian}, Message{Gaussian}])
+    @test !isApplicable(SPNonlinearUTOutNGX, [Message{Gaussian}, Nothing, Message{Gaussian}])
 
     @test ruleSPNonlinearUTOutNGX(h, nothing, Message(Univariate, GaussianMeanVariance, m=2.0, v=3.0), Message(Univariate, GaussianMeanVariance, m=5.0, v=1.0)) == Message(Univariate, GaussianMeanVariance, m=1.9999999997671694, v=67.00000899797305)
     @test ruleSPNonlinearUTOutNGX(h, nothing, Message(Multivariate, GaussianMeanVariance, m=[2.0], v=mat(3.0)), Message(Multivariate, GaussianMeanVariance, m=[5.0], v=mat(1.0))) == Message(Multivariate, GaussianMeanVariance, m=[1.9999999997671694], v=mat(67.00000899657607))
@@ -136,7 +136,7 @@ end
 @testset "SPNonlinearUTIn1GG" begin
     @test SPNonlinearUTIn1GG <: SumProductRule{Nonlinear{Unscented}}
     @test outboundType(SPNonlinearUTIn1GG) == Message{GaussianMeanVariance}
-    @test isApplicable(SPNonlinearUTIn1GG, [Message{Gaussian}, Nothing]) 
+    @test isApplicable(SPNonlinearUTIn1GG, [Message{Gaussian}, Nothing])
 
     # Without given inverse
     @test ruleSPNonlinearUTIn1GG(g, Message(Univariate, GaussianMeanVariance, m=2.0, v=3.0), Message(Univariate, GaussianMeanVariance, m=2.0, v=1.0)) == Message(Univariate, GaussianMeanVariance, m=2.499999999868301, v=0.3125000002253504)
@@ -154,9 +154,9 @@ end
 @testset "SPNonlinearUTInGX" begin
     @test SPNonlinearUTInGX <: SumProductRule{Nonlinear{Unscented}}
     @test outboundType(SPNonlinearUTInGX) == Message{GaussianMeanVariance}
-    @test !isApplicable(SPNonlinearUTInGX, [Message{Gaussian}, Nothing]) 
-    @test !isApplicable(SPNonlinearUTInGX, [Nothing, Message{Gaussian}, Message{Gaussian}]) 
-    @test isApplicable(SPNonlinearUTInGX, [Message{Gaussian}, Nothing, Message{Gaussian}]) 
+    @test !isApplicable(SPNonlinearUTInGX, [Message{Gaussian}, Nothing])
+    @test !isApplicable(SPNonlinearUTInGX, [Nothing, Message{Gaussian}, Message{Gaussian}])
+    @test isApplicable(SPNonlinearUTInGX, [Message{Gaussian}, Nothing, Message{Gaussian}])
 
     # Without given inverse
     @test ruleSPNonlinearUTInGX(h, 1, Message(Univariate, GaussianMeanVariance, m=2.0, v=3.0), Message(Univariate, GaussianMeanVariance, m=2.0, v=1.0), Message(Univariate, GaussianMeanVariance, m=5.0, v=1.0)) == Message(Univariate, GaussianMeanVariance, m=2.4705882352587847, v=0.21799313500892237)
@@ -171,7 +171,7 @@ end
     @test SPNonlinearISIn1MN <: SumProductRule{Nonlinear{ImportanceSampling}}
     @test outboundType(SPNonlinearISIn1MN) == Message{Function}
     @test isApplicable(SPNonlinearISIn1MN, [Message{Union{Bernoulli, Beta, Categorical, Dirichlet, Gaussian, Gamma, LogNormal, Poisson, Wishart}}, Nothing])
-    
+
     log_pdf(x) = ruleSPNonlinearISIn1MN(f, Message(Univariate, GaussianMeanVariance, m=2.0, v=1.0), nothing).dist.params[:log_pdf](x)
     @test log_pdf(1.5) == logPdf(ProbabilityDistribution(Univariate, GaussianMeanVariance, m=2.0, v=1.0), 1.5)
 end
@@ -195,9 +195,9 @@ end
     @RV x ~ GaussianMeanVariance(2.0, 1.0)
     @RV y ~ GaussianMeanVariance(2.0, 3.0)
     n = Nonlinear(y, x, g=g, g_inv=g_inv)
-    
+
     @test isa(n, Nonlinear{Unscented})
-    
+
     # Forward; g_inv should not be present in call
     algo = sumProductAlgorithm(y)
     algo_code = algorithmSourceCode(algo)
@@ -217,7 +217,7 @@ end
     @RV y ~ GaussianMeanVariance(2.0, 3.0)
     @RV z ~ GaussianMeanVariance(5.0, 1.0)
     n = Nonlinear(y, x, z, g=h, g_inv=[h_inv_x, nothing])
-    
+
     # Forward; h_inv_x should not be present in call
     algo = sumProductAlgorithm(y)
     algo_code = algorithmSourceCode(algo)
@@ -243,7 +243,7 @@ end
     @RV x ~ GaussianMeanVariance(2.0, 1.0)
     @RV y ~ GaussianMeanVariance(2.0, 3.0)
     n = Nonlinear{Unscented}(y, x, g=g, alpha=1.0)
-    
+
     # Forward; alpha should be present in call
     algo = sumProductAlgorithm(y)
     algo_code = algorithmSourceCode(algo)
@@ -263,7 +263,7 @@ end
     @test occursin("ruleSPNonlinearUTOutNG(g, nothing, messages[2])", algo_code)
     @test !occursin("$(string(g_inv))", algo_code)
 
-    # Backward; g_inv should not be present in call, 
+    # Backward; g_inv should not be present in call,
     # both messages should be required, and initialization should take place
     algo = sumProductAlgorithm(x)
     algo_code = algorithmSourceCode(algo)
