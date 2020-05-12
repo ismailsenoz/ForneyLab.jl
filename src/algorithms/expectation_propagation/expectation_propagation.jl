@@ -182,23 +182,23 @@ macro expectationPropagationRule(fields...)
     end
 
     # Build validators for isApplicable
-    input_type_validators =
-        String["length(input_types) == $(length(inbound_types.args))"]
+    input_type_validators = Expr[]
+
+    push!(input_type_validators, :(length(input_types) == $(length(inbound_types.args))))
     for (i, i_type) in enumerate(inbound_types.args)
         if i_type != :Nothing
             # Only validate inbounds required for message update
-            push!(input_type_validators, "ForneyLab.matches(input_types[$i], $i_type)")
+            push!(input_type_validators, :(ForneyLab.matches(input_types[$i], $i_type)))
         end
     end
 
-    expr = parse("""
-        begin
-            mutable struct $name <: ExpectationPropagationRule{$node_type} end
-            ForneyLab.outboundType(::Type{$name}) = $outbound_type
-            ForneyLab.isApplicable(::Type{$name}, input_types::Vector{<:Type}, outbound_id::Int64) = $(join(input_type_validators, " && ")) && (outbound_id == $outbound_id)
-            $name
+    expr = quote
+        struct $name <: ExpectationPropagationRule{$node_type} end
+        ForneyLab.outboundType(::Type{$name}) = $outbound_type
+        ForneyLab.isApplicable(::Type{$name}, input_types::Vector{<:Type}, outbound_id::Int64) = begin
+            $(reduce((current, item) -> :($current && $item), input_type_validators, init = :(outbound_id === $outbound_id)))
         end
-    """)
+    end
 
     return esc(expr)
 end
