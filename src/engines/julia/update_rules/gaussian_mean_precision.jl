@@ -111,5 +111,3 @@ function ruleMGaussianMeanPrecisionGGD(
 
     return ProbabilityDistribution(Multivariate, GaussianWeightedMeanPrecision, xi=[xi_y; xi_m], w=[W_y+W_bar -W_bar; -W_bar W_m+W_bar])
 end
-
-f
