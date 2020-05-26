@@ -8,9 +8,9 @@ using SpecialFunctions: digamma, erfc, logfactorial, logabsgamma, logabsbeta
 using LinearAlgebra: Diagonal, Hermitian, isposdef, ishermitian, I, tr
 using InteractiveUtils: subtypes
 using Printf: @sprintf
-using StatsFuns: logmvgamma
+using StatsFuns: logmvgamma, betainvcdf, gammainvcdf, poisinvcdf
 using ForwardDiff
-using StatsBase:Weights
+using StatsBase: Weights
 
 import Statistics: mean, var, cov
 import Base: +, -, *, ^, ==, exp, convert, show, prod!
@@ -56,12 +56,13 @@ include("factor_nodes/gaussian_mixture.jl")
 include("factor_nodes/probit.jl")
 include("factor_nodes/logit.jl")
 include("factor_nodes/softmax.jl")
-include("factor_nodes/nonlinear.jl")
 include("factor_nodes/dot_product.jl")
 include("factor_nodes/poisson.jl")
+include("factor_nodes/nonlinear.jl")
 include("factor_nodes/sample_list.jl")
 # include("factor_nodes/gaussian_controlled_variance.jl")
 # include("factor_nodes/exponential_linear_quadratic.jl")
+
 
 # Factor graph
 include("factor_graph.jl")
@@ -114,10 +115,14 @@ include("update_rules/gaussian_mixture.jl")
 include("update_rules/probit.jl")
 include("update_rules/logit.jl")
 include("update_rules/softmax.jl")
-include("update_rules/nonlinear.jl")
 include("update_rules/dot_product.jl")
 include("update_rules/poisson.jl")
+<<<<<<< HEAD
 # include("update_rules/gaussian_controlled_variance.jl")
+=======
+include("update_rules/nonlinear_unscented.jl")
+include("update_rules/nonlinear_sampling.jl")
+>>>>>>> 6eae7fde39cd60705dbe6158702f0b9822a033b4
 
 *(x::ProbabilityDistribution, y::ProbabilityDistribution) = prod!(x, y) # * operator for probability distributions
 
