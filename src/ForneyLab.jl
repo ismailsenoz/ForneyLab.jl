@@ -117,12 +117,10 @@ include("update_rules/logit.jl")
 include("update_rules/softmax.jl")
 include("update_rules/dot_product.jl")
 include("update_rules/poisson.jl")
-<<<<<<< HEAD
-# include("update_rules/gaussian_controlled_variance.jl")
-=======
+
 include("update_rules/nonlinear_unscented.jl")
 include("update_rules/nonlinear_sampling.jl")
->>>>>>> 6eae7fde39cd60705dbe6158702f0b9822a033b4
+
 
 *(x::ProbabilityDistribution, y::ProbabilityDistribution) = prod!(x, y) # * operator for probability distributions
 
