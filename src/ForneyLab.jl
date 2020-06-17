@@ -60,6 +60,7 @@ include("factor_nodes/dot_product.jl")
 include("factor_nodes/poisson.jl")
 include("factor_nodes/nonlinear.jl")
 include("factor_nodes/sample_list.jl")
+include("factor_nodes/switching_gaussian.jl")
 
 
 
@@ -119,6 +120,7 @@ include("update_rules/poisson.jl")
 include("update_rules/nonlinear_unscented.jl")
 include("update_rules/nonlinear_sampling.jl")
 include("update_rules/sample_list.jl")
+include("update_rules/switching_gaussian.jl")
 
 *(x::ProbabilityDistribution, y::ProbabilityDistribution) = prod!(x, y) # * operator for probability distributions
 
