@@ -7,8 +7,8 @@ A switching Gaussian factor node
     Defines probability distribution over out
     out ∈ R^d,x ∈ R^d
     s is Categorical switch variable
-    A is a tensor of possible matrices
-    Q is a tensor of PD matrices for covariance parametrization
+    A is a (array of matrices) tensor of possible matrices
+    Q is a (array of PD matrices) tensor of PD matrices for covariance parametrization
     f(out, m,s, A,Q) = N(out|A(s)m,Q(s))
 
 
@@ -27,27 +27,25 @@ mutable struct SwitchingGaussian <: SoftFactor
     interfaces::Vector{Interface}
     i::Dict{Symbol,Interface}
 
-    function SwitchingGaussian(out,m,s,A,Q; id=generateId(SwitchingGaussian))
-        @ensureVariables(out,m,s,A,Q)
-        self = new(id, Array{Interface}(undef, 5), Dict{Symbol,Interface}())
+    A::Vector{Matrix{Float64}}
+    Q::Vector{Matrix{Float64}}
+    function SwitchingGaussian(out,m,s;A::Vector{Matrix{Float64}},Q::Vector{Matrix{Float64}}, id=generateId(SwitchingGaussian))
+        @ensureVariables(out,m,s)
+        self = new(id, Array{Interface}(undef, 3), Dict{Symbol,Interface}(),A,Q)
         addNode!(currentGraph(), self)
         self.i[:out] = self.interfaces[1] = associate!(Interface(self), out)
         self.i[:m] = self.interfaces[2] = associate!(Interface(self), m)
         self.i[:s] = self.interfaces[3] = associate!(Interface(self), s)
-        self.i[:A] = self.interfaces[4] = associate!(Interface(self), A)
-        self.i[:Q] = self.interfaces[5] = associate!(Interface(self), Q)
         return self
     end
 end
 slug(::Type{SwitchingGaussian}) = "SG"
 
 function averageEnergy(::Type{SwitchingGaussian}, marg_out_mean::ProbabilityDistribution{Multivariate},marg_s::ProbabilityDistribution{Univariate}
-                       ,marg_A::ProbabilityDistribution{MatrixVariate},marg_Q::ProbabilityDistribution{MatrixVariate})
+                       ,A::Vector{Matrix{Float64}},Q::Vector{Matrix{Float64}})
     (m, V) = unsafeMeanCov(marg_out_mean)
     p = marg_s.params[:p]
     d = Int64(dims(marg_out_mean)/2)
-    A = marg_A.params[:s] #SampleList
-    Q = marg_Q.params[:s] #SampleList
     A_combination = zeros(d,d)
     Q_combination = zeros(d,d)
     q_sum = 0.0
