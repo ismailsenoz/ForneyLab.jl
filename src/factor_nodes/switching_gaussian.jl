@@ -41,8 +41,8 @@ mutable struct SwitchingGaussian <: SoftFactor
 end
 slug(::Type{SwitchingGaussian}) = "SG"
 
-function averageEnergy(::Type{SwitchingGaussian}, marg_out_mean::ProbabilityDistribution{Multivariate},marg_s::ProbabilityDistribution{Univariate}
-                       ,A::Vector{Matrix{Float64}},Q::Vector{Matrix{Float64}})
+function averageEnergy(::Type{SwitchingGaussian}, marg_out_mean::ProbabilityDistribution{Multivariate,F},marg_s::ProbabilityDistribution{Univariate,Categorical}
+                       ,A::Vector{Matrix{Float64}},Q::Vector{Matrix{Float64}}) where F<:Gaussian
     (m, V) = unsafeMeanCov(marg_out_mean)
     p = marg_s.params[:p]
     d = Int64(dims(marg_out_mean)/2)
@@ -61,8 +61,8 @@ function averageEnergy(::Type{SwitchingGaussian}, marg_out_mean::ProbabilityDist
 end
 
 
-function averageEnergy(::Type{SwitchingGaussian}, marg_out_mean::ProbabilityDistribution{Multivariate},marg_s::ProbabilityDistribution{Univariate}
-                       ,A::Vector{Vector{Float64}},Q::Vector{Vector{Float64}})
+function averageEnergy(::Type{SwitchingGaussian}, marg_out_mean::ProbabilityDistribution{Multivariate,F},marg_s::ProbabilityDistribution{Univariate,Categorical}
+                       ,A::Vector{Vector{Float64}},Q::Vector{Vector{Float64}}) where F<:Gaussian
     (m, V) = unsafeMeanCov(marg_out_mean)
     p = marg_s.params[:p]
     d = Int64(dims(marg_out_mean)/2)

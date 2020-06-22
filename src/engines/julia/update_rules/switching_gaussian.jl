@@ -10,15 +10,27 @@ function ruleSVBSwitchingGaussianOutNGD(msg_out::Nothing,
                                           dist_s::ProbabilityDistribution, A::Union{Vector{Matrix{Float64}},Vector{Vector{Float64}}},Q::Union{Vector{Matrix{Float64}},Vector{Vector{Float64}}}) where {F<:Gaussian, V<:VariateType}
 
     p = unsafeMean(dist_s) #category probabilities
-    mean_m,cov_m = unsafeMeanCov(convert(ProbabilityDistribution{Multivariate, GaussianMeanVariance}, msg_m.dist))
+    mean_m,cov_m = unsafeMeanCov(convert(ProbabilityDistribution{V, GaussianMeanVariance}, msg_m.dist))
     dim = length(mean_m)
-    A_combination = zeros(dim,dim)
-    Q_combination = zeros(dim,dim)
-    for i=1:length(p)
-        A_combination += p[i]*A[i]
-        Q_combination += p[i]*Q[i]
+    if dim==1
+        A_combination = 0.0
+        Q_combination = 0.0
+        for i=1:length(p)
+            A_combination += p[i]*A[i][1]
+            Q_combination += p[i]*Q[i][1]
+        end
+        return Message(V, GaussianMeanVariance,m=A_combination*mean_m,v=cov_m[1]+Q_combination)
+    else
+        A_combination = zeros(dim,dim)
+        Q_combination = zeros(dim,dim)
+        for i=1:length(p)
+            A_combination += p[i]*A[i]
+            Q_combination += p[i]*Q[i]
+        end
+        return Message(V, GaussianMeanVariance,m=A_combination*mean_m,v=cov_m+Q_combination)
     end
-    return Message(V, GaussianMeanVariance,m=A_combination*mean_m,v=cov_m+Q_combination)
+
+
 
 end
 ruleSVBSwitchingGaussianMGND(msg_out::Message{F,V},
@@ -55,14 +67,25 @@ function ruleMSwitchingGaussianGGD(msg_out::Message{F1,V},
                                      dist_s::ProbabilityDistribution,A::Union{Vector{Matrix{Float64}},Vector{Vector{Float64}}},Q::Union{Vector{Matrix{Float64}},Vector{Vector{Float64}}}) where {F1<:Gaussian,F2<:Gaussian, V<:VariateType}
     p = unsafeMean(dist_s) #category probabilities
     dim = dims(msg_m.dist)
-    A_combination = zeros(dim,dim)
-    Q_combination = zeros(dim,dim)
-    for i=1:length(p)
-        A_combination += p[i]*A[i]
-        Q_combination += p[i]*Q[i]
+    if dim == 1
+        A_combination = 0.0
+        Q_combination = 0.0
+        for i=1:length(p)
+            A_combination += p[i]*A[i][1]
+            Q_combination += p[i]*Q[i][1]
+        end
+        fwd_message = Message(V,GaussianMeanVariance,m=A_combination*unsafeMean(msg_m.dist),v=A_combination*unsafeCov(msg_m.dist)*A_combination)
+        return ruleMGaussianMeanPrecisionGGD(fwd_message,msg_out,ProbabilityDistribution(Univariate,PointMass,m=Q_combination))
+    else
+        A_combination = zeros(dim,dim)
+        Q_combination = zeros(dim,dim)
+        for i=1:length(p)
+            A_combination += p[i]*A[i]
+            Q_combination += p[i]*Q[i]
+        end
+        fwd_message = Message(V,GaussianMeanVariance,m=A_combination*unsafeMean(msg_m.dist),v=A_combination*unsafeCov(msg_m.dist)*A_combination')
+        return ruleMGaussianMeanPrecisionGGD(fwd_message,msg_out,ProbabilityDistribution(MatrixVariate,PointMass,m=Q_combination))
     end
-    fwd_message = Message(V,GaussianMeanVariance,m=A_combination*unsafeMean(msg_m.dist),v=A_combination*unsafeCov(msg_m.dist)*A_combination')
-    return ruleMGaussianMeanPrecisionGGD(fwd_message,msg_out,ProbabilityDistribution(MatrixVariate,PointMass,m=Q_combination))
 end
 
 function collectStructuredVariationalNodeInbounds(node::SwitchingGaussian, entry::ScheduleEntry)
@@ -95,11 +118,10 @@ function collectStructuredVariationalNodeInbounds(node::SwitchingGaussian, entry
 
         push!(encountered_posterior_factors, current_posterior_factor)
     end
-
     push!(inbounds, Dict{Symbol, Any}(:A => node.A,
-                                      :Q => node.Q,
-                                      :keyword => true))
-
+                                      :keyword => false))
+    push!(inbounds, Dict{Symbol, Any}(:Q => node.Q,
+                                        :keyword => false))
     return inbounds
 end
 
@@ -129,7 +151,35 @@ function collectMarginalNodeInbounds(node::SwitchingGaussian, entry::MarginalEnt
         end
     end
     push!(inbounds, Dict{Symbol, Any}(:A => node.A,
-                                      :Q => node.Q,
-                                      :keyword => true))
+                                      :keyword => false))
+    push!(inbounds, Dict{Symbol, Any}(:Q => node.Q,
+                                        :keyword => false))
+    return inbounds
+end
+
+function collectAverageEnergyInbounds(node::SwitchingGaussian)
+    inbounds = Any[]
+    local_posterior_factor_to_region = localPosteriorFactorToRegion(node)
+
+    encountered_posterior_factors = Union{PosteriorFactor, Edge}[] # Keep track of encountered posterior factors
+    for node_interface in node.interfaces
+        inbound_interface = ultimatePartner(node_interface)
+        current_posterior_factor = posteriorFactor(node_interface.edge)
+
+        if (inbound_interface != nothing) && isa(inbound_interface.node, Clamp)
+            # Hard-code marginal of constant node in schedule
+            push!(inbounds, assembleClamp!(copy(inbound_interface.node), ProbabilityDistribution)) # Copy Clamp before assembly to prevent overwriting dist_or_msg field
+        elseif !(current_posterior_factor in encountered_posterior_factors)
+            # Collect marginal entry from marginal dictionary (if marginal entry is not already accepted)
+            target = local_posterior_factor_to_region[current_posterior_factor]
+            push!(inbounds, current_inference_algorithm.target_to_marginal_entry[target])
+        end
+
+        push!(encountered_posterior_factors, current_posterior_factor)
+    end
+    push!(inbounds, Dict{Symbol, Any}(:A => node.A,
+                                      :keyword => false))
+    push!(inbounds, Dict{Symbol, Any}(:Q => node.Q,
+                                        :keyword => false))
     return inbounds
 end
