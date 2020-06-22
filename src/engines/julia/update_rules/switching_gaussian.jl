@@ -7,7 +7,7 @@ ruleMSwitchingGaussianGGD
 
 function ruleSVBSwitchingGaussianOutNGD(msg_out::Nothing,
                                           msg_m::Message{F,V},
-                                          dist_s::ProbabilityDistribution, A::Vector{Matrix{Float64}},Q::Vector{Matrix{Float64}}) where {F<:Gaussian, V<:VariateType}
+                                          dist_s::ProbabilityDistribution, A::Union{Vector{Matrix{Float64}},Vector{Vector{Float64}}},Q::Union{Vector{Matrix{Float64}},Vector{Vector{Float64}}}) where {F<:Gaussian, V<:VariateType}
 
     p = unsafeMean(dist_s) #category probabilities
     mean_m,cov_m = unsafeMeanCov(convert(ProbabilityDistribution{Multivariate, GaussianMeanVariance}, msg_m.dist))
@@ -23,25 +23,36 @@ function ruleSVBSwitchingGaussianOutNGD(msg_out::Nothing,
 end
 ruleSVBSwitchingGaussianMGND(msg_out::Message{F,V},
                                msg_m::Nothing,
-                               dist_s::ProbabilityDistribution, A::Vector{Matrix{Float64}},Q::Vector{Matrix{Float64}}) where {F<:Gaussian, V<:VariateType} = ruleSVBSwitchingGaussianOutNGD(msg_m,msg_out,dist_s,A,Q)
+                               dist_s::ProbabilityDistribution, A::Union{Vector{Matrix{Float64}},Vector{Vector{Float64}}},Q::Union{Vector{Matrix{Float64}},Vector{Vector{Float64}}}) where {F<:Gaussian, V<:VariateType} = ruleSVBSwitchingGaussianOutNGD(msg_m,msg_out,dist_s,A,Q)
 
 
 function ruleSVBSwitchingGaussianSDN(dist_out_mean::ProbabilityDistribution,
-                                       dist_s::Nothing, A::Vector{Matrix{Float64}},Q::Vector{Matrix{Float64}})
+                                       dist_s::Nothing, A::Union{Vector{Matrix{Float64}},Vector{Vector{Float64}}},Q::Union{Vector{Matrix{Float64}},Vector{Vector{Float64}}})
+
     m,Σ = unsafeMeanCov(convert(ProbabilityDistribution{Multivariate, GaussianMeanVariance}, dist_out_mean))
     d = Int64(dims(dist_out_mean)/2)
-    ψ = [(m[1:d]- A[i]*m[d+1:end])*(m[1:d]- A[i]*m[d+1:end])' + Σ[1:d,1:d]-A[i]*Σ[1:d,d+1:end] -
-        Σ[d+1:end, 1:d]*A[i]'+ A[i]*Σ[d+1:end,d+1:end]*A[i]'  for i=1:size(A[1])[1]]
     p = zeros(size(A[1])[1])
-    for i=1:size(A[1])[1]
-        p[i] = exp(-0.5*(log(det(Q[i])) + tr(inv(Q[i])*ψ[i])))
+    if d == 1
+        ψ = [(m[1:d]- A[i] .* m[d+1:end]) .* (m[1:d]- A[i] .* m[d+1:end]) + Σ[1:d,1:d]-A[i] .* Σ[1:d,d+1:end] -
+            Σ[d+1:end, 1:d] .* A[i]+ A[i] .* Σ[d+1:end,d+1:end] .* A[i]  for i=1:size(A[1])[1]]
+        for i=1:size(A[1])[1]
+            p[i] = exp.(-0.5 * (log.(Q[i][1]) + inv.(Q[i][1]) * ψ[i][1]))
+        end
+        return Message(Univariate,Categorical,p=p./sum(p))
+    else
+        ψ = [(m[1:d]- A[i]*m[d+1:end])*(m[1:d]- A[i]*m[d+1:end])' + Σ[1:d,1:d]-A[i]*Σ[1:d,d+1:end] -
+            Σ[d+1:end, 1:d]*A[i]'+ A[i]*Σ[d+1:end,d+1:end]*A[i]'  for i=1:size(A[1])[1]]
+        for i=1:size(A[1])[1]
+            p[i] = exp(-0.5*(log(det(Q[i])) + tr(inv(Q[i])*ψ[i])))
+        end
+        return Message(Univariate,Categorical,p=p./sum(p))
     end
-    return Message(Univariate,Categorical,p=p./sum(p))
+
 end
 
 function ruleMSwitchingGaussianGGD(msg_out::Message{F1,V},
                                      msg_m::Message{F2,V},
-                                     dist_s::ProbabilityDistribution,A::Vector{Matrix{Float64}},Q::Vector{Matrix{Float64}}) where {F1<:Gaussian,F2<:Gaussian, V<:VariateType}
+                                     dist_s::ProbabilityDistribution,A::Union{Vector{Matrix{Float64}},Vector{Vector{Float64}}},Q::Union{Vector{Matrix{Float64}},Vector{Vector{Float64}}}) where {F1<:Gaussian,F2<:Gaussian, V<:VariateType}
     p = unsafeMean(dist_s) #category probabilities
     dim = dims(msg_m.dist)
     A_combination = zeros(dim,dim)

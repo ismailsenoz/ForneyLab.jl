@@ -27,9 +27,9 @@ mutable struct SwitchingGaussian <: SoftFactor
     interfaces::Vector{Interface}
     i::Dict{Symbol,Interface}
 
-    A::Vector{Matrix{Float64}}
-    Q::Vector{Matrix{Float64}}
-    function SwitchingGaussian(out,m,s;A::Vector{Matrix{Float64}},Q::Vector{Matrix{Float64}}, id=generateId(SwitchingGaussian))
+    A::Union{Vector{Matrix{Float64}},Vector{Vector{Float64}}}
+    Q::Union{Vector{Matrix{Float64}},Vector{Vector{Float64}}}
+    function SwitchingGaussian(out,m,s;A::Union{Vector{Matrix{Float64}},Vector{Vector{Float64}}},Q::Union{Vector{Matrix{Float64}},Vector{Vector{Float64}}}, id=generateId(SwitchingGaussian))
         @ensureVariables(out,m,s)
         self = new(id, Array{Interface}(undef, 3), Dict{Symbol,Interface}(),A,Q)
         addNode!(currentGraph(), self)
@@ -58,4 +58,24 @@ function averageEnergy(::Type{SwitchingGaussian}, marg_out_mean::ProbabilityDist
     0.5*d*log(2*pi) -
     0.5*q_sum +
     0.5*tr( Q_combination*( V[1:d,1:d] - V[1:d,d+1:end] - V[d+1:end,1:d] + V[d+1:end,d+1:end] + (m[1:d] - m[d+1:end])*(m[1:d] - m[d+1:end])' ) )
+end
+
+
+function averageEnergy(::Type{SwitchingGaussian}, marg_out_mean::ProbabilityDistribution{Multivariate},marg_s::ProbabilityDistribution{Univariate}
+                       ,A::Vector{Vector{Float64}},Q::Vector{Vector{Float64}})
+    (m, V) = unsafeMeanCov(marg_out_mean)
+    p = marg_s.params[:p]
+    d = Int64(dims(marg_out_mean)/2)
+    A_combination = 0.0
+    Q_combination = 0.0
+    q_sum = 0.0
+    for i=1:length(p)
+        A_combination += p[i] .* A[i][1]
+        Q_combination += p[i] .* inv(Q[i][1])
+        q_sum += p[i]*log.(Q[i][1])
+    end
+
+    0.5*d*log(2*pi) -
+    0.5*q_sum +
+    0.5*Q_combination*( V[1,1] - V[1,2] - V[2,1] + V[2,2] + (m[1] - m[2])*(m[1] - m[2]))
 end
