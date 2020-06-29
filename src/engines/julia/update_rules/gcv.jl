@@ -18,7 +18,7 @@ function ruleSVBGCVCubatureOutNGD(msg_out::Nothing,msg_m::Message{F, Multivariat
     (sigma_points, weights_m, weights_c) = ForneyLab.sigmaPointsAndWeights(mean_z,cov_z)
     # Unscented approximation
     g_sigma = g.(sigma_points)
-    Λ_out = sum([weights_m[k+1]*inv(g_sigma[k+1]) for k=0:2*d])
+    Λ_out = sum([weights_m[k+1]*cholinv(g_sigma[k+1]) for k=0:2*d])
 
     return Message(Multivariate, GaussianMeanVariance,m=mean_m,v=cov_m+inv(Λ_out))
 end
@@ -30,7 +30,7 @@ function ruleSVBGCVCubatureMGND(msg_out::Message{F, Multivariate},msg_m::Nothing
     (sigma_points, weights_m, weights_c) = ForneyLab.sigmaPointsAndWeights(mean_z,cov_z)
     # Unscented approximation
     g_sigma = g.(sigma_points)
-    Λ_m = sum([weights_m[k+1]*inv(g_sigma[k+1]) for k=0:2*d])
+    Λ_m = sum([weights_m[k+1]*cholinv(g_sigma[k+1]) for k=0:2*d])
 
     return Message(Multivariate, GaussianMeanVariance,m=mean_out,v=cov_out+inv(Λ_m))
 end
@@ -40,7 +40,7 @@ function ruleSVBGCVCubatureZDN(dist_out_mean::ProbabilityDistribution{Multivaria
     m_out_mean, cov_out_mean = unsafeMeanCov(dist_out_mean)
     psi = cov_out_mean[1:d,1:d] - cov_out_mean[1:d,d+1:end] - cov_out_mean[d+1:end, 1:d] + cov_out_mean[d+1:end,d+1:end] + (m_out_mean[1:d] - m_out_mean[d+1:end])*(m_out_mean[1:d] - m_out_mean[d+1:end])'
 
-    l_pdf(z) = -0.5*(logdet(g(z)) + tr(inv(g(z))*psi))
+    l_pdf(z) = -0.5*(logdet(g(z)) + tr(cholinv(g(z))*psi))
     return Message(Multivariate, Function, log_pdf=l_pdf)
 end
 
@@ -50,7 +50,7 @@ function ruleMGCVCubatureMGGD(msg_out::Message{F1, Multivariate},msg_m::Message{
     xi_out,Λ_out = unsafeWeightedMeanPrecision(msg_out.dist)
     xi_mean,Λ_m = unsafeWeightedMeanPrecision(msg_m.dist)
     dist_z = convert(ProbabilityDistribution{Multivariate,GaussianMeanVariance},dist_z)
-    h(z) = inv(g(z))
+    h(z) = cholinv(g(z))
     Λ = kernelExpectation(h,dist_z,10)
     W = [Λ+Λ_out -Λ; -Λ Λ_m+Λ]+ 1e-8*diageye(2*d)
     return ProbabilityDistribution(Multivariate,GaussianWeightedMeanPrecision,xi=[xi_out;xi_mean],w=W)
@@ -201,10 +201,11 @@ function NewtonMethod(g::Function,x_0::Array{Float64},n_its::Int64)
     for i=1:n_its
         grad = ForwardDiff.gradient(g,x_0)
         hessian = ForwardDiff.hessian(g,x_0)
-        x = x_0 - inv(hessian)*grad
+        var = -cholinv(hessian)
+        x = x_0 + var*grad
         x_0 = x
     end
-    var = inv(ForwardDiff.hessian(g,x))
+
     return x, var
 end
 

@@ -122,13 +122,13 @@ end
 function ruleMGaussianMeanPrecisionFGD(msg_out::Message{Function,Multivariate},
                                        msg_mean::Message{F,Multivariate},
                                        dist_prec::ProbabilityDistribution) where F<:Gaussian
-
+    d = dims(msg_mean.dist)
     m_mean,v_mean = unsafeMeanCov(msg_mean.dist)
     Wbar = unsafeMean(dist_prec)
     W = [Wbar -Wbar; -Wbar Wbar]
-    g(s) =  exp.(msg_out.dist.params[:log_pdf](s))
-    h(s) = exp.(-0.5.* (s .- m_mean)'*inv(v_mean)*(s .- m_mean))
-    l(z) = h(z[2])*g(z[1])*exp.(-0.5.*[z[1] z[2]]*inv(W)*[z[1];z[2]])
+    # f(s) =  exp.(msg_out.dist.params[:log_pdf](s))
+    # h(s) = exp.(-0.5.* (s .- m_mean)'*cholinv(v_mean)*(s .- m_mean))
+    l(z) = exp.(-0.5.*z'*W*z - 0.5.* (z[d+1:end] .- m_mean)'*cholinv(v_mean)*(z[d+1:end] .- m_mean) + msg_out.dist.params[:log_pdf](z[1:d]))
     #Expansion point
     msg_fwd = ruleSVBGaussianMeanPrecisionOutVGD(nothing,msg_mean,dist_prec)
     point1 = unsafeMean(msg_fwd.dist*msg_out.dist)
