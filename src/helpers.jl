@@ -25,27 +25,59 @@ function labsbeta(x::Number, y::Number)
     return logabsbeta(x, y)[1]
 end
 
+import LinearAlgebra: eigen, PosDefException, issuccess, cholesky
+
+function ∇²(f)
+    ∇²f = zeros(size(f,1))
+    ∇²f[1] = f[2]-f[1]
+    ∇²f[end] = f[end]-f[end-1]
+    for y = 2:size(f,1)-1,
+        ∇²f[y] = f[y-1] + f[y+1]  - 2f[y]
+    end
+    return ∇²f
+end
 
 """
 Matrix inversion using Cholesky decomposition,
 attempts with added regularization (1e-8*I) on failure.
 """
+# function cholinv(W::AbstractMatrix)
+#     (l, Q) = eigen(W) # Deconstruct
+#     k = clamp.(l, l[argmin(∇²(l))], Inf) # Correct for negative eigenvalues
+#     V = Q'*Diagonal(1.0./k)*Q # Inverted reconstruction (positive definite)
+# end
 function cholinv(M::AbstractMatrix)
-    try
-        return inv(cholesky(Hermitian(Matrix(M))))
-    catch
-        try
-            return inv(cholesky(Hermitian(Matrix(M) + 1e-8*I)))
-        catch exception
-            if isa(exception, PosDefException)
-                error("PosDefException: Matrix is not positive-definite, even after regularization. $(typeof(M)):\n$M")
-            else
-                println("cholinv() errored when inverting $(typeof(M)):\n$M")
-                rethrow(exception)
-            end
-        end
+    A = Hermitian(M)
+    # `safeChol(A)` is a 'safe' version of `chol(A)` in the sense
+    # that it adds jitter to the diagonal of `A` and tries again if
+    # `chol` raised a `PosDefException`.
+    # Matrix `A` can be non-positive-definite in practice even though it
+    # shouldn't be in theory due to finite floating point precision.
+    # If adding jitter does not help, `PosDefException` will still be raised.
+    L = cholesky(A, check = false)
+    if !issuccess(L)
+        @show A
+        jitter = Diagonal(1e-13*(rand(size(A,1))) .* diag(A))
+        L = cholesky(A + jitter, check = true)
     end
+    return inv(L)
 end
+# function cholinv(M::AbstractMatrix)
+#     try
+#         return inv(cholesky(Hermitian(Matrix(M))))
+#     catch
+#         try
+#             return inv(cholesky(Hermitian(Matrix(M) + 1e-8*I)))
+#         catch exception
+#             if isa(exception, PosDefException)
+#                 error("PosDefException: Matrix is not positive-definite, even after regularization. $(typeof(M)):\n$M")
+#             else
+#                 println("cholinv() errored when inverting $(typeof(M)):\n$M")
+#                 rethrow(exception)
+#             end
+#         end
+#     end
+# end
 cholinv(m::Number) = 1.0/m
 cholinv(D::Diagonal) = Diagonal(1 ./ D.diag)
 eye(n::Number) = Diagonal(I,n)

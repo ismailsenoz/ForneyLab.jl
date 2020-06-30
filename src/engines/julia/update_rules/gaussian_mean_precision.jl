@@ -128,7 +128,7 @@ function ruleMGaussianMeanPrecisionFGD(msg_out::Message{Function,Multivariate},
     W = [Wbar -Wbar; -Wbar Wbar]
     # f(s) =  exp.(msg_out.dist.params[:log_pdf](s))
     # h(s) = exp.(-0.5.* (s .- m_mean)'*cholinv(v_mean)*(s .- m_mean))
-    l(z) = exp.(-0.5.*z'*W*z - 0.5.* (z[d+1:end] .- m_mean)'*cholinv(v_mean)*(z[d+1:end] .- m_mean) + msg_out.dist.params[:log_pdf](z[1:d]))
+    l(z) = @views exp.(-0.5 * z'*W*z - 0.5 * (z[d+1:end] - m_mean)' * cholinv(v_mean) * (z[d+1:end] - m_mean) + msg_out.dist.params[:log_pdf](z[1:d]))
     #Expansion point
     msg_fwd = ruleSVBGaussianMeanPrecisionOutVGD(nothing,msg_mean,dist_prec)
     point1 = unsafeMean(msg_fwd.dist*msg_out.dist)
