@@ -9,7 +9,7 @@ ruleSVBGCVLaplaceZDN,
 ruleMGCVLaplaceMGGD,
 prod!
 
-
+import LinearAlgebra: mul!, axpy!
 
 function ruleSVBGCVCubatureOutNGD(msg_out::Nothing,msg_m::Message{F, Multivariate},dist_z::ProbabilityDistribution{Multivariate}, g::Function) where F<:Gaussian
     d = dims(msg_m.dist)
@@ -156,8 +156,6 @@ end
 
 # using FastGaussQuadrature
 
-import LinearAlgebra: mul!, adjoint!
-
 function gaussHermiteCubature(g::Function,dist::ProbabilityDistribution{Multivariate,GaussianMeanVariance},p::Int64)
     d = dims(dist)
     m, P = ForneyLab.unsafeMeanCov(dist)
@@ -262,13 +260,10 @@ function kernelExpectation(g::Function,dist::ProbabilityDistribution{Multivariat
     end
 
     #compute normalization constant
-    return mapreduce(r -> r[1] * g(r[2]), +, zip(weights, points), init = zeros(d, d)) ./ sqrtPi
-    #
-    # g_bar = zeros(d,d)
-    # for (point_tuple, weights) in zip(points_iter, weights_iter)
-    #     weight = prod(weights)
-    #     point = collect(point_tuple)
-    #     g_bar += weight.*g(m+sqrt(2).*sqrtP*point)
-    # end
-    # return g_bar./sqrt(pi)
+    gbar = zeros(d, d)
+    foreach(zip(weights, points)) do (weight, point)
+        axpy!(weight, g(point), gbar) # gbar = gbar + weight * g(point)
+    end
+    broadcast!(/, gbar, gbar, sqrtPi)
+    return gbar
 end
