@@ -184,6 +184,7 @@ function gaussHermiteCubature(g::Function,dist::ProbabilityDistribution{Multivar
         gv = g(point)
         cv = weight * gv
 
+        # mean = mean + point * weight * g(point)
         broadcast!(*, point, point, cv)  # point *= cv
         broadcast!(+, mean, mean, point) # mean += point
         norm += cv
@@ -198,7 +199,7 @@ function gaussHermiteCubature(g::Function,dist::ProbabilityDistribution{Multivar
     cov = zeros(d, d)
     foreach(enumerate(zip(points, cs))) do (index, (point, c))
         broadcast!(-, point, point, mean)                # point -= mean
-        mul!(cov, point, reshape(point, (1, d)), c, 1.0) # cov = cov + c * (point)⋅(point)'
+        mul!(cov, point, reshape(point, (1, d)), c, 1.0) # cov = cov + c * (point)⋅(point)' where c = weight * g(point)
     end
 
     broadcast!(/, cov, cov, norm) # norm * sqrtPi)
