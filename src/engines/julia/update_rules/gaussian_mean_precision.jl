@@ -125,13 +125,19 @@ function ruleMGaussianMeanPrecisionFGD(msg_out::Message{Function,Multivariate},
     d = dims(msg_mean.dist)
     m_mean,v_mean = unsafeMeanCov(msg_mean.dist)
     Wbar = unsafeMean(dist_prec)
+    jitter = Diagonal(1e-13*(rand(size(Wbar,1))) .* diag(Wbar))
+    # W = [(Wbar + jitter) -Wbar; -Wbar (Wbar + jitter)]
     W = [Wbar -Wbar; -Wbar Wbar]
     # f(s) =  exp.(msg_out.dist.params[:log_pdf](s))
     # h(s) = exp.(-0.5.* (s .- m_mean)'*cholinv(v_mean)*(s .- m_mean))
-    l(z) = @views exp.(-0.5 * z'*W*z - 0.5 * (z[d+1:end] - m_mean)' * cholinv(v_mean) * (z[d+1:end] - m_mean) + msg_out.dist.params[:log_pdf](z[1:d]))
+    logpdf = msg_out.dist.params[:log_pdf]
+    v_mean_inv = cholinv(v_mean)
+    l(z) = @views exp.(-0.5 * z'*W*z - 0.5 * (z[d+1:end] - m_mean)' * v_mean_inv * (z[d+1:end] - m_mean) + logpdf(z[1:d]))
     #Expansion point
     msg_fwd = ruleSVBGaussianMeanPrecisionOutVGD(nothing,msg_mean,dist_prec)
     point1 = unsafeMean(msg_fwd.dist*msg_out.dist)
+
+    # @show exp(logpdf(point1))
 
     m_joint, v_joint = NewtonMethod(l,[point1;m_mean],10)
     return ProbabilityDistribution(Multivariate,GaussianMeanVariance,m=m_joint,v=v_joint)

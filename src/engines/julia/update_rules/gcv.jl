@@ -230,9 +230,10 @@ function NewtonMethod(g::Function,x_0::Array{Float64},n_its::Int64)
     x = zeros(dim)
     var = zeros(dim,dim)
     for i=1:n_its
+        # @show x_0
         grad = ForwardDiff.gradient(g,x_0)
         hessian = ForwardDiff.hessian(g,x_0)
-        var = -cholinv(hessian)
+        var = cholinv(-hessian)
         x = x_0 + var*grad
         x_0 = x
     end

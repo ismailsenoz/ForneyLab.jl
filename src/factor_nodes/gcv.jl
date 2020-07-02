@@ -40,7 +40,7 @@ end
 
 slug(::Type{GCV}) = "GCV"
 
-function averageEnergy(Node::Type{GCV{Cubature}}, marg_out_mean::ProbabilityDistribution{Multivariate, F}, marg_z::ProbabilityDistribution{Multivariate, F}, g::Function) where F<:Gaussian
+function averageEnergy(Node::Type{GCV{Cubature}}, marg_out_mean::ProbabilityDistribution{Multivariate, F1}, marg_z::ProbabilityDistribution{Multivariate, F2}, g::Function) where { F1 <:Gaussian, F2 <:Gaussian }
     (m, V) = unsafeMeanCov(marg_out_mean)
     (mz,Vz) = unsafeMeanCov(marg_z)
     (sigma_points, weights_m, weights_c) = ForneyLab.sigmaPointsAndWeights(mz,Vz)

@@ -77,5 +77,5 @@ function isApplicable(::Type{SPEqualityGaussianRGMP}, input_types::Vector{Type})
         end
     end
 
-    return (Nothing_inputs == 1) && (function_inputs == 1) && (gaussian_inputs == 1)
+    return (nothing_inputs == 1) && (function_inputs == 1) && (gaussian_inputs == 1)
 end

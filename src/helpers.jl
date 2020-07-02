@@ -46,6 +46,8 @@ attempts with added regularization (1e-8*I) on failure.
 #     k = clamp.(l, l[argmin(∇²(l))], Inf) # Correct for negative eigenvalues
 #     V = Q'*Diagonal(1.0./k)*Q # Inverted reconstruction (positive definite)
 # end
+import SuiteSparse: inv
+
 function cholinv(M::AbstractMatrix)
     A = Hermitian(M)
     # `safeChol(A)` is a 'safe' version of `chol(A)` in the sense
@@ -56,9 +58,11 @@ function cholinv(M::AbstractMatrix)
     # If adding jitter does not help, `PosDefException` will still be raised.
     L = cholesky(A, check = false)
     if !issuccess(L)
-        @show A
-        jitter = Diagonal(1e-13*(rand(size(A,1))) .* diag(A))
-        L = cholesky(A + jitter, check = true)
+        # @show A
+        (l, Q) = eigen(Matrix(L)) # Deconstruct
+        k = clamp.(l, l[argmin(∇²(l))], Inf) # Correct for negative eigenvalues
+        V = Q'*Diagonal(1.0./k)*Q # Inverted reconstruction (positive definite)
+        L = cholesky(Hermitian(V), check = true)
     end
     return inv(L)
 end

@@ -55,10 +55,10 @@ unsafeMode(dist::ProbabilityDistribution{V, GaussianWeightedMeanPrecision}) wher
 unsafeVar(dist::ProbabilityDistribution{Univariate, GaussianWeightedMeanPrecision}) = 1.0/dist.params[:w] # unsafe variance
 unsafeVar(dist::ProbabilityDistribution{Multivariate, GaussianWeightedMeanPrecision}) = diag(cholinv(dist.params[:w]))
 
-unsafeCov(dist::ProbabilityDistribution{V, GaussianWeightedMeanPrecision}) where V<:VariateType = cholinv(dist.params[:w])
+unsafeCov(dist::ProbabilityDistribution{V, GaussianWeightedMeanPrecision}) where V<:VariateType = cholinv(collect(dist.params[:w]))
 
 function unsafeMeanCov(dist::ProbabilityDistribution{V, GaussianWeightedMeanPrecision}) where V<:VariateType
-    v = cholinv(dist.params[:w])
+    v = cholinv(collect(dist.params[:w]))
     return (v*dist.params[:xi], v)
 end
 
