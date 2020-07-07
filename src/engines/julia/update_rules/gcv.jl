@@ -225,18 +225,30 @@ end
     return z
 end
 
+import NLsolve: nlsolve
+
 function NewtonMethod(g::Function,x_0::Array{Float64},n_its::Int64)
     dim = length(x_0)
-    x = zeros(dim)
-    var = zeros(dim,dim)
-    for i=1:n_its
-        # @show x_0
-        grad = ForwardDiff.gradient(g,x_0)
-        hessian = ForwardDiff.hessian(g,x_0)
-        var = cholinv(-hessian)
-        x = x_0 + var*grad
-        x_0 = x
-    end
+    # x = zeros(dim)
+    # var = zeros(dim,dim)
+
+    grad_g = (x) -> ForwardDiff.gradient(g, x)
+
+    r = nlsolve(grad_g, x_0)
+
+    # @show r
+    #
+    # for i=1:n_its
+    #     @show x_0
+    #     grad = ForwardDiff.gradient(g,x_0)
+    #     hessian = ForwardDiff.hessian(g,x_0)
+    #     var = cholinv(-hessian)
+    #     x = x_0 + var*grad
+    #     x_0 = x
+    # end
+
+    x = r.zero
+    var = cholinv(-ForwardDiff.hessian(g, x))
 
     return x, var
 end

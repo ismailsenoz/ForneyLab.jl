@@ -43,12 +43,30 @@ slug(::Type{GCV}) = "GCV"
 function averageEnergy(Node::Type{GCV{Cubature}}, marg_out_mean::ProbabilityDistribution{Multivariate, F1}, marg_z::ProbabilityDistribution{Multivariate, F2}, g::Function) where { F1 <:Gaussian, F2 <:Gaussian }
     (m, V) = unsafeMeanCov(marg_out_mean)
     (mz,Vz) = unsafeMeanCov(marg_z)
-    (sigma_points, weights_m, weights_c) = ForneyLab.sigmaPointsAndWeights(mz,Vz)
-    d = Int64(dims(marg_out_mean)/2)
-    # Unscented approximation
-    g_sigma = g.(sigma_points)
-    Λ_out = sum([weights_m[k+1]*cholinv(g_sigma[k+1]) for k=0:2*d])
+
+    # @show m
+    # @show V
+    # @show mz
+    # @show Vz
+
+    sqrtVz = sqrt(Vz)
+    d = Int64(dims(marg_out_mean) / 2)
+    p = 20
+
+    weights_iter, points_iter = multiDimensionalPointsWeights(d, p)
+
+    weights_m = prod.(weights_iter)
+    points_m = Base.Generator(points_iter) do ptuple
+        ptmp = collect(ptuple)
+        return mz + sqrt(2) * sqrtVz * ptmp
+    end
+    g_sigma = g.(points_m)
+
+    Λ_out = sum([weights_m[k+1]*inv(g_sigma[k+1]) for k=0:2*d])
     log_det_sum = sum([weights_m[k+1]*log(det(g_sigma[k+1])) for k=0:2*d])
+
+    Λ_out ./= sqrt(pi)
+    log_det_sum /= sqrt(pi)
 
     @views 0.5*d*log(2*pi) +
     0.5*log_det_sum +
