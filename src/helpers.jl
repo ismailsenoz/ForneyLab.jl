@@ -47,41 +47,41 @@ attempts with added regularization (1e-8*I) on failure.
 #     V = Q'*Diagonal(1.0./k)*Q # Inverted reconstruction (positive definite)
 # end
 import SuiteSparse: inv
-
-function cholinv(M::AbstractMatrix)
-    A = Hermitian(M)
-    # `safeChol(A)` is a 'safe' version of `chol(A)` in the sense
-    # that it adds jitter to the diagonal of `A` and tries again if
-    # `chol` raised a `PosDefException`.
-    # Matrix `A` can be non-positive-definite in practice even though it
-    # shouldn't be in theory due to finite floating point precision.
-    # If adding jitter does not help, `PosDefException` will still be raised.
-    L = cholesky(A, check = false)
-    if !issuccess(L)
-        # @show A
-        (l, Q) = eigen(Matrix(L)) # Deconstruct
-        k = clamp.(l, l[argmin(∇²(l))], Inf) # Correct for negative eigenvalues
-        V = Q'*Diagonal(1.0./k)*Q # Inverted reconstruction (positive definite)
-        L = cholesky(Hermitian(V), check = true)
-    end
-    return inv(L)
-end
+#
 # function cholinv(M::AbstractMatrix)
-#     try
-#         return inv(cholesky(Hermitian(Matrix(M))))
-#     catch
-#         try
-#             return inv(cholesky(Hermitian(Matrix(M) + 1e-8*I)))
-#         catch exception
-#             if isa(exception, PosDefException)
-#                 error("PosDefException: Matrix is not positive-definite, even after regularization. $(typeof(M)):\n$M")
-#             else
-#                 println("cholinv() errored when inverting $(typeof(M)):\n$M")
-#                 rethrow(exception)
-#             end
-#         end
+#     A = Hermitian(M)
+#     # `safeChol(A)` is a 'safe' version of `chol(A)` in the sense
+#     # that it adds jitter to the diagonal of `A` and tries again if
+#     # `chol` raised a `PosDefException`.
+#     # Matrix `A` can be non-positive-definite in practice even though it
+#     # shouldn't be in theory due to finite floating point precision.
+#     # If adding jitter does not help, `PosDefException` will still be raised.
+#     L = cholesky(A, check = false)
+#     if !issuccess(L)
+#         # @show A
+#         (l, Q) = eigen(Matrix(L)) # Deconstruct
+#         k = clamp.(l, l[argmin(∇²(l))], Inf) # Correct for negative eigenvalues
+#         V = Q'*Diagonal(1.0./k)*Q # Inverted reconstruction (positive definite)
+#         L = cholesky(Hermitian(V), check = true)
 #     end
+#     return inv(L)
 # end
+function cholinv(M::AbstractMatrix)
+    try
+        return inv(cholesky(Hermitian(Matrix(M))))
+    catch
+        try
+            return inv(cholesky(Hermitian(Matrix(M) + 1e-8*I)))
+        catch exception
+            if isa(exception, PosDefException)
+                error("PosDefException: Matrix is not positive-definite, even after regularization. $(typeof(M)):\n$M")
+            else
+                println("cholinv() errored when inverting $(typeof(M)):\n$M")
+                rethrow(exception)
+            end
+        end
+    end
+end
 cholinv(m::Number) = 1.0/m
 cholinv(D::Diagonal) = Diagonal(1 ./ D.diag)
 eye(n::Number) = Diagonal(I,n)

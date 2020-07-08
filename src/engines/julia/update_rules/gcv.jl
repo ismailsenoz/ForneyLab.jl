@@ -17,8 +17,9 @@ function ruleSVBGCVCubatureOutNGD(msg_out::Nothing,msg_m::Message{F, Multivariat
     mean_m, cov_m = unsafeMeanCov(msg_m.dist)
     (sigma_points, weights_m, weights_c) = ForneyLab.sigmaPointsAndWeights(mean_z,cov_z)
     # Unscented approximation
-    g_sigma = g.(sigma_points)
+    g_sigma = g.(mean_z + sqrt(2)*sqrt(cov_z)*sigma_points)
     Λ_out = sum([weights_m[k+1]*cholinv(g_sigma[k+1]) for k=0:2*d])
+    Λ_out ./= pi^(d/2)
 
     return Message(Multivariate, GaussianMeanVariance,m=mean_m,v=cov_m+inv(Λ_out))
 end
@@ -29,8 +30,9 @@ function ruleSVBGCVCubatureMGND(msg_out::Message{F, Multivariate},msg_m::Nothing
     mean_z, cov_z = unsafeMeanCov(dist_z)
     (sigma_points, weights_m, weights_c) = ForneyLab.sigmaPointsAndWeights(mean_z,cov_z)
     # Unscented approximation
-    g_sigma = g.(sigma_points)
+    g_sigma = g.(mean_z + sqrt(2)*sqrt(cov_z)*sigma_points)
     Λ_m = sum([weights_m[k+1]*cholinv(g_sigma[k+1]) for k=0:2*d])
+    Λ_m ./= pi^(d/2)
 
     return Message(Multivariate, GaussianMeanVariance,m=mean_out,v=cov_out+inv(Λ_m))
 end
@@ -204,7 +206,7 @@ function gaussHermiteCubature(g::Function,dist::ProbabilityDistribution{Multivar
 
     broadcast!(/, cov, cov, norm) # norm * sqrtPi)
 
-    return mean, cov
+    return mean, cov./(pi^(d/2))
 end
 
 @symmetrical function prod!(
@@ -258,7 +260,7 @@ function kernelExpectation(g::Function,dist::ProbabilityDistribution{Multivariat
     m, P = ForneyLab.unsafeMeanCov(dist)
     sqrtP = sqrt(P)
     sqrt2 = sqrt(2)
-    sqrtPi = sqrt(pi)
+    sqrtPi = pi^(d/2)
     weights_iter, points_iter = multiDimensionalPointsWeights(d, p)
 
     weights = Base.Generator(weights_iter) do pweight

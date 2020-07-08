@@ -62,11 +62,11 @@ function averageEnergy(Node::Type{GCV{Cubature}}, marg_out_mean::ProbabilityDist
     end
     g_sigma = g.(points_m)
 
-    Λ_out = sum([weights_m[k+1]*inv(g_sigma[k+1]) for k=0:2*d])
-    log_det_sum = sum([weights_m[k+1]*log(det(g_sigma[k+1])) for k=0:2*d])
+    Λ_out = sum([weights_m[k+1]*cholinv(g_sigma[k+1]) for k=0:p-1])
+    log_det_sum = sum([weights_m[k+1]*log(det(g_sigma[k+1])) for k=0:p-1])
 
-    Λ_out ./= sqrt(pi)
-    log_det_sum /= sqrt(pi)
+    Λ_out ./= pi^(d/2)
+    log_det_sum /= pi^(d/2)
 
     @views 0.5*d*log(2*pi) +
     0.5*log_det_sum +
