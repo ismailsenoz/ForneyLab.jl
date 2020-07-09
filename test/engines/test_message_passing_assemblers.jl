@@ -7,7 +7,7 @@ using ForneyLab: assembleBreaker!, assembleClamp!, assembleInferenceAlgorithm!, 
 @testset "assembleClamp!" begin
     g = FactorGraph()
     nd = Clamp(Variable(), 1.0)
-    assembleClamp!(nd, ProbabilityDistribution)
+    assembleClamp!(nd, ProbabilityDistribution)    
     @test nd.dist_or_msg == ProbabilityDistribution
 end
 
@@ -71,7 +71,7 @@ end
     @RV x ~ GaussianMeanPrecision(0.0, 1.0)
     @RV y ~ Nonlinear(x, g=f)
     GaussianMeanPrecision(y, 0.0, 1.0)
-
+    
     pfz = PosteriorFactorization()
     pf = PosteriorFactor(pfz)
     setTargets!(pf, pfz, [x])
@@ -132,7 +132,7 @@ end
     assembleMarginalTable!(pf)
     @test pf.marginal_table[1].marginal_update_rule == ForneyLab.Product
     @test pf.marginal_table[1].marginal_id == :x
-    @test pf.marginal_table[1].inbounds == [pf.schedule[3], pf.schedule[6]]
+    @test pf.marginal_table[1].inbounds == [pf.schedule[3], pf.schedule[6]] 
 
     # Marginal rule
     g = FactorGraph()

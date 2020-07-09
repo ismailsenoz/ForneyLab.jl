@@ -13,6 +13,7 @@ end
     @test valueSourceCode(1) == "1"
     @test valueSourceCode([1]) == "[1]"
     @test valueSourceCode(mat(1)) == "mat(1)"
+    @test valueSourceCode(reshape([1,2,3], 3, 1)) == "reshape([1, 2, 3], (3, 1))"
     @test valueSourceCode([1 2; 2 1]) == "[1 2; 2 1]"
     @test valueSourceCode(Diagonal([1])) == "Diagonal([1])"
 end
@@ -60,7 +61,7 @@ f() = 1.0 # Define a function
     inbound = MarginalEntry()
     inbound.marginal_id = :x
     @test inboundSourceCode(inbound) == "marginals[:x]"
-
+    
     # message
     inbound = ScheduleEntry()
     inbound.schedule_index = 1
@@ -135,7 +136,7 @@ end
     inbounds[2].marginal_id = :x
 
     entropies_vect = [Dict(:counting_number => -1,
-                           :inbound         => inbounds[1]),
+                           :inbound         => inbounds[1]), 
                       Dict(:counting_number => 2,
                            :inbound         => inbounds[2])]
 
@@ -184,12 +185,12 @@ end
     pf.optimize = true
 
     pf_code = optimizeSourceCode(pf)
-    @test occursin("function optimizeX!(data::Dict, marginals::Dict=Dict(), messages::Vector{Message}=initX()", pf_code)
+    @test occursin("function optimizeX!(data::Dict, marginals::Dict=Dict(), messages::Vector{Message}=initX()", pf_code)    
 end
 
 @testset "posteriorFactorSourceCode" begin
     g = FactorGraph()
-    pfz = PosteriorFactorization()
+    pfz = PosteriorFactorization() 
     pf = PosteriorFactor(pfz, id=:X)
     algo = InferenceAlgorithm(pfz)
     pf.algorithm_id = algo.id

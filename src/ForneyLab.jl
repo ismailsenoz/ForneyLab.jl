@@ -2,15 +2,15 @@ module ForneyLab
 
 using Base.Meta: parse
 using Base64: base64encode
-using LinearAlgebra: diag, det, tr, cholesky, pinv, PosDefException
+using LinearAlgebra: diag, det, tr, cholesky, pinv, PosDefException, logdet
 using SparseArrays: spzeros
 using SpecialFunctions: digamma, erfc, logfactorial, logabsgamma, logabsbeta
-using LinearAlgebra: Diagonal, Hermitian, isposdef, ishermitian, I, tr, logdet
+using LinearAlgebra: Diagonal, Hermitian, isposdef, ishermitian, I, tr
 using InteractiveUtils: subtypes
 using Printf: @sprintf
-using StatsFuns: logmvgamma
+using StatsFuns: logmvgamma, betainvcdf, gammainvcdf, poisinvcdf
 using ForwardDiff
-using StatsBase:Weights
+using StatsBase: Weights
 
 import Statistics: mean, var, cov
 import Base: +, -, *, ^, ==, exp, convert, show, prod!
@@ -19,6 +19,7 @@ import StatsBase: sample
 
 # Helpers
 include("helpers.jl")
+include("cubature.jl")
 include("dependency_graph.jl")
 
 # High level abstracts
@@ -56,11 +57,12 @@ include("factor_nodes/gaussian_mixture.jl")
 include("factor_nodes/probit.jl")
 include("factor_nodes/logit.jl")
 include("factor_nodes/softmax.jl")
-include("factor_nodes/nonlinear.jl")
 include("factor_nodes/dot_product.jl")
 include("factor_nodes/poisson.jl")
+include("factor_nodes/nonlinear.jl")
 include("factor_nodes/sample_list.jl")
 include("factor_nodes/gcv.jl")
+
 
 # Factor graph
 include("factor_graph.jl")
@@ -113,9 +115,10 @@ include("update_rules/gaussian_mixture.jl")
 include("update_rules/probit.jl")
 include("update_rules/logit.jl")
 include("update_rules/softmax.jl")
-include("update_rules/nonlinear.jl")
 include("update_rules/dot_product.jl")
 include("update_rules/poisson.jl")
+include("update_rules/nonlinear_unscented.jl")
+include("update_rules/nonlinear_sampling.jl")
 include("update_rules/gcv.jl")
 
 *(x::ProbabilityDistribution, y::ProbabilityDistribution) = prod!(x, y) # * operator for probability distributions

@@ -5,9 +5,8 @@ ruleSPNonlinearUTOutNG,
 ruleSPNonlinearUTOutNGX,
 ruleSPNonlinearUTIn1GG,
 ruleSPNonlinearUTInGX,
-ruleSPNonlinearISIn1MN,
-ruleSPNonlinearISOutNG,
-ruleMNonlinearUTNGX
+ruleMNonlinearUTInGX,
+prod!
 
 const default_alpha = 1e-3 # Default value for the spread parameter
 const default_beta = 2.0
@@ -121,20 +120,34 @@ function unscentedStatistics(ms::Vector{Vector{Float64}}, Vs::Vector{<:AbstractM
 end
 
 """
-RTS smoother update, based on (Petersen et al. 2018; On Approximate Nonlinear Gaussian Message Passing on Factor Graphs)
-Note, this implementation is not as efficient as Petersen et al. (2018), because we explicitly require the outbound messages
+RTS smoother update for backward message
 """
-function smoothRTS(m_tilde, V_tilde, C_tilde, m_fw_in, V_fw_in, m_bw_out, V_bw_out)
+function smoothRTSMessage(m_tilde, V_tilde, C_tilde, m_fw_in, V_fw_in, m_bw_out, V_bw_out)
     C_tilde_inv = pinv(C_tilde)
     V_bw_in = V_fw_in*C_tilde_inv'*(V_tilde + V_bw_out)*C_tilde_inv*V_fw_in - V_fw_in
     m_bw_in = m_fw_in + V_fw_in*C_tilde_inv'*(m_bw_out - m_tilde)
 
-    return (m_bw_in, V_bw_in)
+    return (m_bw_in, V_bw_in) # Statistics for backward message on in
 end
 
-#-------------
-# Update Rules
-#-------------
+"""
+RTS smoother update for inbound marginal; based on (Petersen et al. 2018; On Approximate Nonlinear Gaussian Message Passing on Factor Graphs)
+"""
+function smoothRTS(m_tilde, V_tilde, C_tilde, m_fw_in, V_fw_in, m_bw_out, V_bw_out)
+    P = cholinv(V_tilde + V_bw_out)
+    W_tilde = cholinv(V_tilde)
+    D_tilde = C_tilde*W_tilde
+    V_in = V_fw_in + D_tilde*(V_bw_out*P*C_tilde' - C_tilde')
+    m_out = V_tilde*P*m_bw_out + V_bw_out*P*m_tilde
+    m_in = m_fw_in + D_tilde*(m_out - m_tilde)
+
+    return (m_in, V_in) # Statistics for marginal on in
+end
+
+
+#-----------------------
+# Unscented Update Rules
+#-----------------------
 
 # Forward rule (unscented transform)
 function ruleSPNonlinearUTOutNG(g::Function,
@@ -158,19 +171,6 @@ function ruleSPNonlinearUTOutNGX(g::Function, # Needs to be in front of Vararg
     (m_tilde, V_tilde, _) = unscentedStatistics(ms_fw_in, Vs_fw_in, g; alpha=alpha)
 
     return Message(V, GaussianMeanVariance, m=m_tilde, v=V_tilde)
-end
-
-# Forward rule (importance sampling)
-function ruleSPNonlinearISOutNG(g::Function,
-                                msg_out::Nothing,
-                                msg_in1::Message{F, Univariate}) where F<:Gaussian
-
-    # The forward message is parameterized by a SampleList
-    dist_in1 = convert(ProbabilityDistribution{Univariate, GaussianMeanVariance}, msg_in1.dist)
-
-    sample_list = g.(dist_in1.params[:m] .+ sqrt(dist_in1.params[:v]).*randn(100))
-
-    Message(Univariate, SampleList, s=sample_list)
 end
 
 # Backward rule with given inverse (unscented transform)
@@ -209,9 +209,8 @@ function ruleSPNonlinearUTIn1GG(g::Function,
     (m_tilde, V_tilde, C_tilde) = unscentedStatistics(m_fw_in1, V_fw_in1, g; alpha=alpha)
 
     # RTS smoother
-    W_fw_in1 = unsafePrecision(msg_in1.dist)
     (m_bw_out, V_bw_out) = unsafeMeanCov(msg_out.dist)
-    (m_bw_in1, V_bw_in1) = smoothRTS(m_tilde, V_tilde, C_tilde, m_fw_in1, V_fw_in1, m_bw_out, V_bw_out)
+    (m_bw_in1, V_bw_in1) = smoothRTSMessage(m_tilde, V_tilde, C_tilde, m_fw_in1, V_fw_in1, m_bw_out, V_bw_out)
 
     return Message(V, GaussianMeanVariance, m=m_bw_in1, v=V_bw_in1)
 end
@@ -229,43 +228,36 @@ function ruleSPNonlinearUTInGX(g::Function,
 
     # RTS smoother
     (m_fw_in, V_fw_in, ds) = concatenateGaussianMV(ms_fw_in, Vs_fw_in)
-    W_fw_in = cholinv(V_fw_in)
     (m_bw_out, V_bw_out) = unsafeMeanCov(msg_out.dist)
-    (m_bw_in, V_bw_in) = smoothRTS(m_tilde, V_tilde, C_tilde, m_fw_in, V_fw_in, m_bw_out, V_bw_out)
+    (m_in, V_in) = smoothRTS(m_tilde, V_tilde, C_tilde, m_fw_in, V_fw_in, m_bw_out, V_bw_out)
 
-    # Marginalize
-    (m_bw_inx, V_bw_inx) = marginalizeGaussianMV(V, m_bw_in, V_bw_in, ds, inx)
+    # Marginalize joint belief on in's
+    (m_inx, V_inx) = marginalizeGaussianMV(V, m_in, V_in, ds, inx) # Marginalization is overloaded on VariateType V
+    W_inx = cholinv(V_inx) # Convert to canonical statistics
+    xi_inx = W_inx*m_inx
 
-    return Message(V, GaussianMeanVariance, m=m_bw_inx, v=V_bw_inx)
+    # Divide marginal on inx by forward message
+    (xi_fw_inx, W_fw_inx) = unsafeWeightedMeanPrecision(msgs_in[inx].dist)
+    xi_bw_inx = xi_inx - xi_fw_inx
+    W_bw_inx = W_inx - W_fw_inx # Note: subtraction might lead to posdef inconsistencies
+
+    return Message(V, GaussianWeightedMeanPrecision, xi=xi_bw_inx, w=W_bw_inx)
 end
 
-# Backward rule (importance sampling)
-function ruleSPNonlinearISIn1MN(g::Function, msg_out::Message{F, Univariate}, msg_in1::Nothing) where {F<:SoftFactor}
-    # The backward message is computed by a change of variables,
-    # where the Jacobian follows from automatic differentiation
-    log_grad_g(z) = log(abs(ForwardDiff.derivative(g, z)))
-
-    Message(Univariate, Function, log_pdf=(z) -> log_grad_g(z) + logPdf(msg_out.dist, g(z)))
-end
-
-function ruleMNonlinearUTNGX(g::Function,
-                             msg_out::Message{<:Gaussian, V},
-                             msgs_in::Vararg{Message{<:Gaussian, V}};
-                             alpha::Float64=default_alpha) where V<:VariateType
+function ruleMNonlinearUTInGX(g::Function,
+                              msg_out::Message{<:Gaussian, V},
+                              msgs_in::Vararg{Message{<:Gaussian, V}};
+                              alpha::Float64=default_alpha) where V<:VariateType
 
     # Approximate joint inbounds
     (ms_fw_in, Vs_fw_in) = collectStatistics(msgs_in...) # Returns arrays with individual means and covariances
     (m_tilde, V_tilde, C_tilde) = unscentedStatistics(ms_fw_in, Vs_fw_in, g; alpha=alpha)
 
-    (_, V_fw_in, _) = concatenateGaussianMV(ms_fw_in, Vs_fw_in) # Statistics of joint forward messages
+    (m_fw_in, V_fw_in, _) = concatenateGaussianMV(ms_fw_in, Vs_fw_in) # Statistics of joint forward messages
     (m_bw_out, V_bw_out) = unsafeMeanCov(msg_out.dist)
 
-    # Compute joint marginal on ins; based on (Petersen et al. 2018; On Approximate Nonlinear Gaussian Message Passing on Factor Graphs)
-    P = cholinv(V_tilde + V_bw_out)
-    W_tilde = cholinv(V_tilde)
-    V_in = V_fw_in + C_tilde*W_tilde*V_bw_out*P*C_tilde' - C_tilde*W_tilde*C_tilde'
-    m_out = V_tilde*P*m_bw_out + V_bw_out*P*m_tilde
-    m_in = C_tilde*W_tilde*(m_out - m_tilde)
+    # Compute joint marginal on in's
+    (m_in, V_in) = smoothRTS(m_tilde, V_tilde, C_tilde, m_fw_in, V_fw_in, m_bw_out, V_bw_out)
 
     return ProbabilityDistribution(Multivariate, GaussianMeanVariance, m=m_in, v=V_in)
 end
@@ -329,33 +321,6 @@ function collectSumProductNodeInbounds(node::Nonlinear{Unscented}, entry::Schedu
     return inbounds
 end
 
-# Importance sampling
-function collectSumProductNodeInbounds(node::Nonlinear{ImportanceSampling}, entry::ScheduleEntry)
-    inbounds = Any[]
-
-    # Push function to calling signature; function needs to be defined in the scope of the user
-    push!(inbounds, Dict{Symbol, Any}(:g => node.g,
-                                      :keyword => false))
-
-    interface_to_schedule_entry = current_inference_algorithm.interface_to_schedule_entry
-    for node_interface in node.interfaces
-        inbound_interface = ultimatePartner(node_interface)
-        if node_interface == entry.interface
-            # Ignore inbound message on outbound interface
-            push!(inbounds, nothing)
-        elseif isa(inbound_interface.node, Clamp)
-            # Hard-code outbound message of constant node in schedule
-            push!(inbounds, assembleClamp!(inbound_interface.node, Message))
-        else
-            # Collect message from previous result
-            push!(inbounds, interface_to_schedule_entry[inbound_interface])
-        end
-    end
-
-    return inbounds
-end
-
-# Unscented transform
 function collectMarginalNodeInbounds(node::Nonlinear{Unscented}, entry::MarginalEntry)
     inbounds = Any[]
 
@@ -460,9 +425,9 @@ end
 """
 Split a vector in chunks of lengths specified by ds.
 """
-function split(vec::Vector{Float64}, ds::Vector{Int64})
+function split(vec::Vector, ds::Vector{Int64})
     N = length(ds)
-    res = Vector{Vector{Float64}}(undef, N)
+    res = Vector{Vector}(undef, N)
 
     d_start = 1
     for k = 1:N # For each original statistic

@@ -44,29 +44,19 @@ function averageEnergy(Node::Type{GCV{Cubature}}, marg_out_mean::ProbabilityDist
     (m, V) = unsafeMeanCov(marg_out_mean)
     (mz,Vz) = unsafeMeanCov(marg_z)
 
-    # @show m
-    # @show V
-    # @show mz
-    # @show Vz
-
-    sqrtVz = sqrt(Vz)
     d = Int64(dims(marg_out_mean) / 2)
-    p = 20
 
-    weights_iter, points_iter = multiDimensionalPointsWeights(d, p)
+    cubature = ghcubature(d, 20)
+    weights = getweights(cubature)
+    points  = getpoints(cubature, mz, Vz)
 
-    weights_m = prod.(weights_iter)
-    points_m = Base.Generator(points_iter) do ptuple
-        ptmp = collect(ptuple)
-        return mz + sqrt(2) * sqrtVz * ptmp
+    gs = Base.Generator(points) do point
+        return g(point)
     end
-    g_sigma = g.(points_m)
 
-    Λ_out = sum([weights_m[k+1]*cholinv(g_sigma[k+1]) for k=0:p-1])
-    log_det_sum = sum([weights_m[k+1]*log(det(g_sigma[k+1])) for k=0:p-1])
-
-    Λ_out ./= pi^(d/2)
-    log_det_sum /= pi^(d/2)
+    sqrtpi = pi ^ (d / 2)
+    Λ_out = mapreduce(t -> t[1] * cholinv(t[2]), +, zip(weights, gs)) / sqrtpi
+    log_det_sum = mapreduce(t -> t[1] * logdet(t[2]), +, zip(weights, gs)) / sqrtpi
 
     @views 0.5*d*log(2*pi) +
     0.5*log_det_sum +

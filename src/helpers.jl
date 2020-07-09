@@ -25,8 +25,6 @@ function labsbeta(x::Number, y::Number)
     return logabsbeta(x, y)[1]
 end
 
-import LinearAlgebra: eigen, PosDefException, issuccess, cholesky
-
 function ∇²(f)
     ∇²f = zeros(size(f,1))
     ∇²f[1] = f[2]-f[1]
@@ -37,19 +35,14 @@ function ∇²(f)
     return ∇²f
 end
 
+import LinearAlgebra: eigen, PosDefException, issuccess, cholesky
+
 """
 Matrix inversion using Cholesky decomposition,
 attempts with added regularization (1e-8*I) on failure.
 """
-# function cholinv(W::AbstractMatrix)
-#     (l, Q) = eigen(W) # Deconstruct
-#     k = clamp.(l, l[argmin(∇²(l))], Inf) # Correct for negative eigenvalues
-#     V = Q'*Diagonal(1.0./k)*Q # Inverted reconstruction (positive definite)
-# end
-import SuiteSparse: inv
-#
 # function cholinv(M::AbstractMatrix)
-#     A = Hermitian(M)
+#     A = Hermitian(Matrix(M))
 #     # `safeChol(A)` is a 'safe' version of `chol(A)` in the sense
 #     # that it adds jitter to the diagonal of `A` and tries again if
 #     # `chol` raised a `PosDefException`.
@@ -66,22 +59,44 @@ import SuiteSparse: inv
 #     end
 #     return inv(L)
 # end
-function cholinv(M::AbstractMatrix)
+
+function safeChol(A::Hermitian)
+    # `safeChol(A)` is a 'safe' version of `chol(A)` in the sense
+    # that it adds jitter to the diagonal of `A` and tries again if
+    # `chol` raised a `PosDefException`.
+    # Matrix `A` can be non-positive-definite in practice even though it
+    # shouldn't be in theory due to finite floating point precision.
+    # If adding jitter does not help, `PosDefException` will still be raised.
+    L = similar(A)
     try
-        return inv(cholesky(Hermitian(Matrix(M))))
-    catch
-        try
-            return inv(cholesky(Hermitian(Matrix(M) + 1e-8*I)))
-        catch exception
-            if isa(exception, PosDefException)
-                error("PosDefException: Matrix is not positive-definite, even after regularization. $(typeof(M)):\n$M")
-            else
-                println("cholinv() errored when inverting $(typeof(M)):\n$M")
-                rethrow(exception)
-            end
+        L = cholesky(A)
+    catch e
+        if e isa PosDefException
+            # Add jitter to diagonal to break linear dependence among rows/columns.
+            # The additive noise is input-dependent to make sure that we hit the
+            # significant precision of the Float64 values with high probability.
+            jitter = Diagonal(1e-13 * (rand(size(A,1))) .* diag(A))
+            L = cholesky(A + jitter)
         end
     end
 end
+cholinv(M::AbstractMatrix) = inv(safeChol(Hermitian(Matrix(M))))
+# function cholinv(M::AbstractMatrix)
+#     try
+#         return inv(cholesky(Hermitian(Matrix(M))))
+#     catch
+#         try
+#             return inv(cholesky(Hermitian(Matrix(M) + 1e-8*I)))
+#         catch exception
+#             if isa(exception, PosDefException)
+#                 error("PosDefException: Matrix is not positive-definite, even after regularization. $(typeof(M)):\n$M")
+#             else
+#                 println("cholinv() errored when inverting $(typeof(M)):\n$M")
+#                 rethrow(exception)
+#             end
+#         end
+#     end
+# end
 cholinv(m::Number) = 1.0/m
 cholinv(D::Diagonal) = Diagonal(1 ./ D.diag)
 eye(n::Number) = Diagonal(I,n)
@@ -145,6 +160,10 @@ function format(v::Vector{Any})
         end
     end
     return str
+end
+
+function format(x::Any)
+    return string(x)
 end
 
 """Check if arguments are approximately equal"""

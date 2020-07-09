@@ -47,14 +47,14 @@ function assembleInitialization!(pf::PosteriorFactor)
         if (entry.message_update_rule <: ExpectationPropagationRule)
             breaker_entry = interface_to_schedule_entry[partner]
             assembleBreaker!(breaker_entry, family(outbound_types[partner]), ()) # Univariate only
-            pf_initialize_flag = true
+            pf_initialize_flag = true 
         elseif isa(entry.interface.node, Nonlinear{Unscented}) && (entry.interface != entry.interface.node.interfaces[1]) # Nonlinear node with inbound entry
             node = entry.interface.node
             multi_in = (length(node.interfaces) > 2) # Boolean to indicate a multi-inbound nonlinear node
             inx = findfirst(isequal(entry.interface), node.interfaces) - 1 # Find number of inbound interface; 0 for outbound
             undefined_inverse = (node.g_inv == nothing) || (multi_in && (inx > 0) && (node.g_inv[inx] == nothing))
 
-            # Set initialization in case of a nonlinear node without given inverse
+            # Set initialization in case of a nonlinear node without given inverse 
             if undefined_inverse # If no inverse is given
                 if isa(node.dims, Tuple)
                     dims_inx = node.dims # Same breaker dimensions for all inbounds
@@ -67,6 +67,21 @@ function assembleInitialization!(pf::PosteriorFactor)
                 assembleBreaker!(breaker_entry, family(outbound_types[iface]), dims_inx)
                 pf_initialize_flag = true
             end
+        elseif isa(entry.interface.node, Nonlinear{Sampling}) && (entry.interface != entry.interface.node.interfaces[1]) # Nonlinear node with inbound entry
+            node = entry.interface.node
+            inx = findfirst(isequal(entry.interface), node.interfaces) - 1
+            
+            # Set initialization
+            if isa(node.dims, Tuple)
+                dims_inx = node.dims # Same breaker dimensions for all inbounds
+            else
+                dims_inx = node.dims[inx] # Inbound-specific breaker dimensions
+            end
+
+            iface = ultimatePartner(node.interfaces[inx+1])
+            breaker_entry = interface_to_schedule_entry[iface]
+            assembleBreaker!(breaker_entry, family(outbound_types[iface]), dims_inx)
+            pf_initialize_flag = true
         elseif !(partner == nothing) && isa(partner.node, Clamp)
             pf_update_clamp_flag = true # Signifies the need for creating a custom `step!` function for optimizing clamped variables
             iface = entry.interface
@@ -84,7 +99,7 @@ end
 
 function assembleMarginalTable!(pf::PosteriorFactor)
     interface_to_schedule_entry = current_inference_algorithm.interface_to_schedule_entry
-
+    
     for entry in pf.marginal_table
         if entry.marginal_update_rule == Nothing
             iface = entry.interfaces[1]
@@ -92,7 +107,7 @@ function assembleMarginalTable!(pf::PosteriorFactor)
         elseif entry.marginal_update_rule == Product
             iface1 = entry.interfaces[1]
             iface2 = entry.interfaces[2]
-            inbounds = [interface_to_schedule_entry[iface1],
+            inbounds = [interface_to_schedule_entry[iface1], 
                         interface_to_schedule_entry[iface2]]
         else
             inbounds = collectInbounds(entry)

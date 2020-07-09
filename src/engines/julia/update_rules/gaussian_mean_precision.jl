@@ -119,6 +119,8 @@ function ruleSVBGaussianMeanPrecisionMFND(msg_out::Message{Function,Multivariate
     return Message(Multivariate,GaussianMeanVariance,m=m_mean,v=v_mean+inv(unsafeMean(dist_prec)))
 end
 
+using Plots; pyplot()
+
 function ruleMGaussianMeanPrecisionFGD(msg_out::Message{Function,Multivariate},
                                        msg_mean::Message{F,Multivariate},
                                        dist_prec::ProbabilityDistribution) where F<:Gaussian
@@ -126,21 +128,50 @@ function ruleMGaussianMeanPrecisionFGD(msg_out::Message{Function,Multivariate},
     m_mean,v_mean = unsafeMeanCov(msg_mean.dist)
     Wbar = unsafeMean(dist_prec)
     jitter = Diagonal(1e-13*(rand(size(Wbar,1))) .* diag(Wbar))
-    # W = [(Wbar + jitter) -Wbar; -Wbar (Wbar + jitter)]
-    W = [Wbar -Wbar; -Wbar Wbar]
+    W = [(Wbar + jitter) -Wbar; -Wbar (Wbar + jitter)]
+    # W = [Wbar -Wbar; -Wbar Wbar]
     # f(s) =  exp.(msg_out.dist.params[:log_pdf](s))
     # h(s) = exp.(-0.5.* (s .- m_mean)'*cholinv(v_mean)*(s .- m_mean))
     logpdf = msg_out.dist.params[:log_pdf]
+
+    msg_fwd = ruleSVBGaussianMeanPrecisionOutVGD(nothing, msg_mean, dist_prec)
+
+    #
+    # approxg = Message(Multivariate, GaussianMeanVariance, m = mean, v = cov)
+
+    # return ruleMGaussianMeanPrecisionGGD(approxg, msg_mean, dist_prec)
     v_mean_inv = cholinv(v_mean)
     l(z) = @views exp.(-0.5 * z'*W*z - 0.5 * (z[d+1:end] - m_mean)' * v_mean_inv * (z[d+1:end] - m_mean) + logpdf(z[1:d]))
     #Expansion point
-    msg_fwd = ruleSVBGaussianMeanPrecisionOutVGD(nothing,msg_mean,dist_prec)
-    point1 = unsafeMean(msg_fwd.dist*msg_out.dist)
+    point1 = unsafeMean(msg_fwd.dist * msg_out.dist)
 
-    # @show exp(logpdf(point1))
+    try
+        m_joint, v_joint = NewtonMethod(l,[point1;m_mean],10)
+        return ProbabilityDistribution(Multivariate,GaussianMeanVariance,m=m_joint,v=v_joint)
+    catch e
+        # println(approximate_norm(cubature, (z) -> exp.(logpdf(z)) / norm, msg_fwd.dist))
+        # a = -5
+        # b = 5
+        # n = 100
+        # d = (b - a) / n
+        # x = range(a,stop=b,length=n)
+        # y = range(a,stop=b,length=n)
+        # integral = 0.0
+        # for xp in x
+        #     for yp in y
+        #         integral += d^2 * (exp.(logpdf([ xp, yp ])) ./ norm) .* exp.(logPdf(msg_mean.dist, [ xp, yp ]))
+        #     end
+        # end
+        # f(x,y) = exp.(logpdf([ x, y ])) ./ norm .* exp.(logPdf(msg_mean.dist, [ x, y ]))
+        # @show integral
+        # display(plot(x,y,f, st=:surface, camera=(-30,30)))
+        cubature = ghcubature(d, 20)
+        mean, cov = approximate_meancov(cubature, (x) -> exp(logpdf(x)), msg_fwd.dist)
+        approx_message = Message(Multivariate, GaussianMeanVariance, m = mean, v = cov)
+        return ruleMGaussianMeanPrecisionGGD(approx_message, msg_mean, dist_prec)
+    end
 
-    m_joint, v_joint = NewtonMethod(l,[point1;m_mean],10)
-    return ProbabilityDistribution(Multivariate,GaussianMeanVariance,m=m_joint,v=v_joint)
+
 end
 
 function collectStructuredVariationalNodeInbounds(node::GaussianMeanPrecision, entry::ScheduleEntry)
