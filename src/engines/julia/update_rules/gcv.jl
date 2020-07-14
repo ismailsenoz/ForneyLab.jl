@@ -3,13 +3,21 @@ ruleSVBGCVCubatureOutNGD,
 ruleSVBGCVCubatureMGND,
 ruleSVBGCVCubatureZDN,
 ruleMGCVCubatureMGGD,
+ruleSVBGCVUnscentedOutNGD,
+ruleSVBGCVUnscentedMGND,
+ruleSVBGCVUnscentedZDN,
+ruleMGCVUnscentedMGGD,
 ruleSVBGCVLaplaceOutNGD,
 ruleSVBGCVLaplaceMGND,
 ruleSVBGCVLaplaceZDN,
-ruleMGCVLaplaceMGGD,
+ruleMGCVLaplaceMGGD
 prod!
 
 import LinearAlgebra: mul!, axpy!
+
+const default_alpha = 1e-3
+const default_beta = 2.0
+const default_kappa = 0.0
 
 function ruleSVBGCVCubatureOutNGD(msg_out::Nothing,msg_m::Message{F, Multivariate},dist_z::ProbabilityDistribution{Multivariate}, g::Function) where F<:Gaussian
     ndims = dims(msg_m.dist)
@@ -75,7 +83,48 @@ function ruleMGCVCubatureMGGD(msg_out::Message{F1, Multivariate},msg_m::Message{
 
 end
 
-function collectStructuredVariationalNodeInbounds(node::GCV{Cubature}, entry::ScheduleEntry)
+function ruleSVBGCVUnscentedOutNGD(msg_out::Nothing,msg_m::Message{F, Multivariate},dist_z::ProbabilityDistribution{Multivariate}, g::Function) where F<:Gaussian
+    ndims = dims(msg_m.dist)
+    mean_z, cov_z = unsafeMeanCov(dist_z)
+    mean_m, cov_m = unsafeMeanCov(msg_m.dist)
+
+    sp, wm, wc = ForneyLab.sigmaPointsAndWeights(mean_z, cov_z; alpha=default_alpha, beta=default_beta, kappa=default_kappa)
+
+    ginv = Base.Generator(sp) do point
+        return cholinv(g(point))
+    end
+
+    Λ_out = mapreduce(t -> t[1] * t[2], +, zip(wm, ginv))
+
+    return Message(Multivariate, GaussianMeanVariance,m=mean_m,v=cov_m+cholinv(Λ_out))
+end
+
+ruleSVBGCVUnscentedMGND(msg_out::Message{F, Multivariate},msg_m::Nothing, dist_z::ProbabilityDistribution{Multivariate}, g::Function) where F<:Gaussian =
+    ruleSVBGCVUnscentedOutNGD(msg_m,msg_out,dist_z,g)
+
+ruleSVBGCVUnscentedZDN(dist_out_mean::ProbabilityDistribution{Multivariate}, msg_z::Nothing, g::Function) =
+    ruleSVBGCVCubatureZDN(dist_out_mean,msg_z,g)
+
+function ruleMGCVUnscentedMGGD(msg_out::Message{F1, Multivariate},msg_m::Message{F2, Multivariate},dist_z::ProbabilityDistribution{Multivariate,F3},g::Function) where {F1<:Gaussian,F2<:Gaussian,F3<:Gaussian}
+    ndims = dims(msg_out.dist)
+    xi_out, Λ_out = unsafeWeightedMeanPrecision(msg_out.dist)
+    xi_mean, Λ_m = unsafeWeightedMeanPrecision(msg_m.dist)
+    mean_z, cov_z = unsafeMeanCov(dist_z)
+
+    sp, wm, wc = ForneyLab.sigmaPointsAndWeights(mean_z, cov_z; alpha=default_alpha, beta=default_beta, kappa=default_kappa)
+
+    ginv = Base.Generator(sp) do point
+        return cholinv(g(point))
+    end
+
+    Λ = mapreduce(t -> t[1] * t[2], +, zip(wm, ginv))
+
+    W = [ Λ + Λ_out -Λ; -Λ Λ_m + Λ] # + 1e-8*diageye(2*d)
+    return ProbabilityDistribution(Multivariate, GaussianWeightedMeanPrecision, xi=[xi_out;xi_mean], w = W)
+
+end
+
+function collectStructuredVariationalNodeInbounds(node::GCV, entry::ScheduleEntry)
     interface_to_schedule_entry = current_inference_algorithm.interface_to_schedule_entry
     target_to_marginal_entry = current_inference_algorithm.target_to_marginal_entry
 
@@ -156,16 +205,35 @@ end
     ndims = dims(y)
 
     # @show y
+    g(s) = exp(x.params[:log_pdf](s))*s
 
-    g(s) = exp(x.params[:log_pdf](s))
-
-    cubature = ghcubature(ndims, 20)
-    m, V = approximate_meancov(cubature, g, y)
-
+    ms, Vs = unsafeMeanCov(y)
+    m, V, _ = unscentedStatistics(ms, Vs, g; alpha=default_alpha, beta=default_beta, kappa=default_kappa)
     z.params[:m] = m
     z.params[:v] = V
     return z
 end
+
+#
+# @symmetrical function prod!(
+#     x::ProbabilityDistribution{Multivariate, Function},
+#     y::ProbabilityDistribution{Multivariate, F},
+#     z::ProbabilityDistribution{Multivariate, GaussianMeanVariance}=ProbabilityDistribution(Multivariate, GaussianMeanVariance, m=zeros(3), v=diageye(3))) where {F<:Gaussian}
+#
+#     y = convert(ProbabilityDistribution{Multivariate,GaussianMeanVariance},y)
+#     ndims = dims(y)
+#
+#     # @show y
+#
+#     g(s) = exp(x.params[:log_pdf](s))
+#
+#     cubature = ghcubature(ndims, 20)
+#     m, V = approximate_meancov(cubature, g, y)
+#
+#     z.params[:m] = m
+#     z.params[:v] = V
+#     return z
+# end
 
 import NLsolve: nlsolve
 

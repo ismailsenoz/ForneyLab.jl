@@ -22,6 +22,17 @@ mutable struct GCV{T<:ApproximationMethod} <: SoftFactor
         return self
     end
 
+    function GCV{Unscented}(out, m, z, g::Function; id=ForneyLab.generateId(GCV{Cubature}))
+        @ensureVariables(out, m, z)
+        self = new(id, Vector{Interface}(undef, 3), Dict{Symbol,Interface}(), g)
+        ForneyLab.addNode!(currentGraph(), self)
+        self.i[:out] = self.interfaces[1] = associate!(Interface(self), out)
+        self.i[:m] = self.interfaces[2] = associate!(Interface(self), m)
+        self.i[:z] = self.interfaces[3] = associate!(Interface(self), z)
+
+        return self
+    end
+
     function GCV{Laplace}(out, m, z, g::Function; id=ForneyLab.generateId(GCV{Laplace}))
         @ensureVariables(out, m, z)
         self = new(id, Vector{Interface}(undef, 3), Dict{Symbol,Interface}(), g)
@@ -57,6 +68,29 @@ function averageEnergy(Node::Type{GCV{Cubature}}, marg_out_mean::ProbabilityDist
     sqrtpi = pi ^ (d / 2)
     Λ_out = mapreduce(t -> t[1] * cholinv(t[2]), +, zip(weights, gs)) / sqrtpi
     log_det_sum = mapreduce(t -> t[1] * logdet(t[2]), +, zip(weights, gs)) / sqrtpi
+
+    @views 0.5*d*log(2*pi) +
+    0.5*log_det_sum +
+    0.5*tr( Λ_out*( V[1:d,1:d] - V[1:d,d+1:end] - V[d+1:end,1:d] + V[d+1:end,d+1:end] + (m[1:d] - m[d+1:end])*(m[1:d] - m[d+1:end])' ) )
+end
+
+const default_alpha = 1e-3
+const default_beta = 2.0
+const default_kappa = 0.0
+
+function averageEnergy(Node::Type{GCV{Unscented}}, marg_out_mean::ProbabilityDistribution{Multivariate, F1}, marg_z::ProbabilityDistribution{Multivariate, F2}, g::Function) where { F1 <:Gaussian, F2 <:Gaussian }
+    (m, V) = unsafeMeanCov(marg_out_mean)
+    (mz,Vz) = unsafeMeanCov(marg_z)
+    d = Int64(dims(marg_out_mean) / 2)
+
+    sp, wm, wc = ForneyLab.sigmaPointsAndWeights(mz, Vz; alpha=default_alpha, beta=default_beta, kappa=default_kappa)
+
+    gs = Base.Generator(sp) do point
+        return g(point)
+    end
+
+    Λ_out = mapreduce(t -> t[1] * cholinv(t[2]), +, zip(wm, gs))
+    log_det_sum = mapreduce(t -> t[1] * logdet(t[2]), +, zip(wm, gs))
 
     @views 0.5*d*log(2*pi) +
     0.5*log_det_sum +

@@ -119,8 +119,6 @@ function ruleSVBGaussianMeanPrecisionMFND(msg_out::Message{Function,Multivariate
     return Message(Multivariate,GaussianMeanVariance,m=m_mean,v=v_mean+inv(unsafeMean(dist_prec)))
 end
 
-using Plots; pyplot()
-
 function ruleMGaussianMeanPrecisionFGD(msg_out::Message{Function,Multivariate},
                                        msg_mean::Message{F,Multivariate},
                                        dist_prec::ProbabilityDistribution) where F<:Gaussian
