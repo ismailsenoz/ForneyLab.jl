@@ -96,6 +96,9 @@ function averageEnergy(Node::Type{GCV{SphericalRadial}}, marg_out_mean::Probabil
     0.5*tr( Λ_out*( V[1:d,1:d] - V[1:d,d+1:end] - V[d+1:end,1:d] + V[d+1:end,d+1:end] + (m[1:d] - m[d+1:end])*(m[1:d] - m[d+1:end])' ) )
 end
 
+averageEnergy(Node::Type{GCV{Laplace}}, marg_out_mean::ProbabilityDistribution{Multivariate, F1}, marg_z::ProbabilityDistribution{Multivariate, F2}, g::Function) where { F1 <:Gaussian, F2 <:Gaussian } =
+    averageEnergy(GCV{SphericalRadial}, marg_out_mean, marg_z, g)
+
 function collectAverageEnergyInbounds(node::GCV)
     inbounds = Any[]
     local_posterior_factor_to_region = localPosteriorFactorToRegion(node)

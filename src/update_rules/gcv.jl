@@ -47,7 +47,7 @@
                           :name           => SVBGCVLaplaceMGND)
 
 @structuredVariationalRule(:node_type      => GCV{Laplace},
-                          :outbound_type  => Message{Function},
+                          :outbound_type  => Message{GaussianMeanVariance},
                           :inbound_types  => (ProbabilityDistribution,Nothing),
                           :name           => SVBGCVLaplaceZDN)
 

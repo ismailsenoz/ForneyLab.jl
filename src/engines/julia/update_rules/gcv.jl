@@ -10,7 +10,7 @@ ruleMGCVSphericalRadialMGGD,
 ruleSVBGCVLaplaceOutNGD,
 ruleSVBGCVLaplaceMGND,
 ruleSVBGCVLaplaceZDN,
-ruleMGCVLaplaceMGGD
+ruleMGCVLaplaceMGGD,
 prod!
 
 function ruleSVBGCVGaussHermiteOutNGD(msg_out::Nothing,msg_m::Message{F, Multivariate},dist_z::ProbabilityDistribution{Multivariate}, g::Function) where F<:Gaussian
@@ -117,6 +117,62 @@ function ruleMGCVSphericalRadialMGGD(msg_out::Message{F1, Multivariate},msg_m::M
 
 end
 
+function ruleSVBGCVLaplaceOutNGD(msg_out::Nothing,msg_m::Message{F, Multivariate},dist_z::ProbabilityDistribution{Multivariate}, g::Function) where F<:Gaussian
+    ndims = dims(msg_m.dist)
+    mean_z, cov_z = unsafeMeanCov(dist_z)
+    mean_m, cov_m = unsafeMeanCov(msg_m.dist)
+
+    cubature = srcubature(ndims)
+    weights = getweights(cubature)
+    points  = getpoints(cubature, mean_z, cov_z)
+
+    ginv = Base.Generator(points) do point
+        return cholinv(g(point))
+    end
+
+    Λ_out = mapreduce(t -> t[1] * t[2], +, zip(weights, ginv)) / (pi ^ (ndims / 2))
+
+    return Message(Multivariate, GaussianMeanVariance,m=mean_m,v=cov_m+cholinv(Λ_out))
+end
+
+ruleSVBGCVLaplaceMGND(msg_out::Message{F, Multivariate},msg_m::Nothing, dist_z::ProbabilityDistribution{Multivariate}, g::Function) where F<:Gaussian =
+    ruleSVBGCVLaplaceOutNGD(msg_m, msg_out, dist_z, g)
+
+function ruleSVBGCVLaplaceZDN(dist_out_mean::ProbabilityDistribution{Multivariate}, msg_z::Message{F, Multivariate}, g::Function) where F <: Gaussian
+    d = Int64(dims(dist_out_mean)/2)
+    m_out_mean, cov_out_mean = unsafeMeanCov(dist_out_mean)
+    psi = cov_out_mean[1:d,1:d] - cov_out_mean[1:d,d+1:end] - cov_out_mean[d+1:end, 1:d] + cov_out_mean[d+1:end,d+1:end] + (m_out_mean[1:d] - m_out_mean[d+1:end])*(m_out_mean[1:d] - m_out_mean[d+1:end])'
+
+    l_pdf(z) = begin
+        gz = g(z)
+        -0.5*(logdet(gz) + tr(cholinv(gz)*psi))
+    end
+
+    mean, cov = NewtonMethod(l_pdf, ForneyLab.unsafeMean(msg_z.dist))
+
+    return Message(Multivariate, GaussianMeanVariance, m = mean, v = cov)
+end
+
+function ruleMGCVLaplaceMGGD(msg_out::Message{F1, Multivariate},msg_m::Message{F2, Multivariate},dist_z::ProbabilityDistribution{Multivariate,F3},g::Function) where {F1<:Gaussian,F2<:Gaussian,F3<:Gaussian}
+    ndims = dims(msg_out.dist)
+    xi_out, Λ_out = unsafeWeightedMeanPrecision(msg_out.dist)
+    xi_mean, Λ_m = unsafeWeightedMeanPrecision(msg_m.dist)
+    mean_z, cov_z = unsafeMeanCov(dist_z)
+
+    cubature = srcubature(ndims)
+    weights = getweights(cubature)
+    points  = getpoints(cubature, mean_z, cov_z)
+
+    ginv = Base.Generator(points) do point
+        return cholinv(g(point))
+    end
+
+    Λ = mapreduce(t -> t[1] * t[2], +, zip(weights, ginv))
+
+    W = [ Λ + Λ_out -Λ; -Λ Λ_m + Λ] # + 1e-8*diageye(2*d)
+    return ProbabilityDistribution(Multivariate, GaussianWeightedMeanPrecision, xi=[xi_out;xi_mean], w = W)
+end
+
 @symmetrical function prod!(
     x::ProbabilityDistribution{Multivariate, Function},
     y::ProbabilityDistribution{Multivariate, F},
@@ -140,7 +196,7 @@ end
 import NLsolve: nlsolve
 import ReverseDiff
 
-function NewtonMethod(g::Function,x_0::Array{Float64},n_its::Int64)
+function NewtonMethod(g::Function, x_0::Array{Float64})
     dim = length(x_0)
 
     grad_g = (x) -> ReverseDiff.gradient(g, x)
@@ -156,19 +212,21 @@ end
 function collectStructuredVariationalNodeInbounds(node::GCV, entry::ScheduleEntry)
     interface_to_schedule_entry = current_inference_algorithm.interface_to_schedule_entry
     target_to_marginal_entry = current_inference_algorithm.target_to_marginal_entry
-
     inbounds = Any[]
     entry_posterior_factor = posteriorFactor(entry.interface.edge)
     local_posterior_factor_to_region = localPosteriorFactorToRegion(entry.interface.node)
-
     encountered_posterior_factors = Union{PosteriorFactor, Edge}[] # Keep track of encountered posterior factors
     for node_interface in entry.interface.node.interfaces
         inbound_interface = ultimatePartner(node_interface)
         current_posterior_factor = posteriorFactor(node_interface.edge)
-
         if node_interface === entry.interface
-            # Ignore marginal of outbound edge
-            push!(inbounds, nothing)
+            if entry.message_update_rule == SVBGCVLaplaceZDN
+                # @show inbound_interface
+                haskey(interface_to_schedule_entry, inbound_interface) || error("The GCV{Laplace} node's backward rule uses the incoming message on the input edge to determine the approximation point. Try altering the variable order in the scheduler to first perform a forward pass.")
+                push!(inbounds, interface_to_schedule_entry[inbound_interface])
+            else
+                push!(inbounds, nothing)
+            end
         elseif (inbound_interface != nothing) && isa(inbound_interface.node, Clamp)
             # Hard-code marginal of constant node in schedule
             push!(inbounds, assembleClamp!(inbound_interface.node, ProbabilityDistribution))
@@ -180,14 +238,10 @@ function collectStructuredVariationalNodeInbounds(node::GCV, entry::ScheduleEntr
             target = local_posterior_factor_to_region[current_posterior_factor]
             push!(inbounds, target_to_marginal_entry[target])
         end
-
         push!(encountered_posterior_factors, current_posterior_factor)
     end
-
-
     push!(inbounds, Dict{Symbol, Any}(:g => node.g,
                                       :keyword => false))
-
     return inbounds
 end
 
