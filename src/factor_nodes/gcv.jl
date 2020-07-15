@@ -5,6 +5,9 @@ abstract type GaussHermite <: ApproximationMethod end
 abstract type SphericalRadial <: ApproximationMethod end
 abstract type Laplace <: ApproximationMethod end
 
+struct MultivariateGaussianMeanVariance end
+
+vague(::Type{<:MultivariateGaussianMeanVariance}) = ProbabilityDistribution(Multivariate, GaussianMeanVariance, m = zeros(2), v = diageye(2))
 
 mutable struct GCV{T<:ApproximationMethod} <: SoftFactor
     id::Symbol

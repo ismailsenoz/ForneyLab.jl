@@ -148,7 +148,11 @@ function ruleSVBGCVLaplaceZDN(dist_out_mean::ProbabilityDistribution{Multivariat
         -0.5*(logdet(gz) + tr(cholinv(gz)*psi))
     end
 
-    mean, cov = NewtonMethod(l_pdf, ForneyLab.unsafeMean(msg_z.dist))
+    epoint = ForneyLab.unsafeMean(msg_z.dist)
+    epoint[1] += tiny
+    mean, cov = NewtonMethod((s) -> exp(l_pdf(s) + logPdf(msg_z.dist, s)), epoint)
+
+    # smoothRTSMessage(m_tilde, V_tilde, C_tilde, m_fw_in, V_fw_in, m_bw_out, V_bw_out)
 
     return Message(Multivariate, GaussianMeanVariance, m = mean, v = cov)
 end
@@ -193,7 +197,7 @@ end
     return z
 end
 
-import NLsolve: nlsolve
+import NLsolve: nlsolve, converged
 import ReverseDiff
 
 function NewtonMethod(g::Function, x_0::Array{Float64})
@@ -204,6 +208,12 @@ function NewtonMethod(g::Function, x_0::Array{Float64})
     r = nlsolve(grad_g, x_0, method = :newton, ftol = 1e-8)
 
     x = r.zero
+    @show grad_g(x)
+    @show g(x)
+    @show ForwardDiff.jacobian(grad_g, x)
+    @show converged(r)
+    @show r
+
     cov = cholinv(-ForwardDiff.jacobian(grad_g, x))
 
     return x, cov

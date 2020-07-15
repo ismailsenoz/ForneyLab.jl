@@ -82,6 +82,10 @@ function assembleInitialization!(pf::PosteriorFactor)
             breaker_entry = interface_to_schedule_entry[iface]
             assembleBreaker!(breaker_entry, family(outbound_types[iface]), dims_inx)
             pf_initialize_flag = true
+        elseif isa(entry.interface.node, GCV{Laplace}) && (entry.interface == entry.interface.node.interfaces[3])
+            breaker_entry = interface_to_schedule_entry[partner]
+            assembleBreaker!(breaker_entry, MultivariateGaussianMeanVariance, ()) # Univariate only
+            pf_initialize_flag = true
         elseif !(partner == nothing) && isa(partner.node, Clamp)
             pf_update_clamp_flag = true # Signifies the need for creating a custom `step!` function for optimizing clamped variables
             iface = entry.interface
