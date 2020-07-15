@@ -19,7 +19,10 @@ import StatsBase: sample
 
 # Helpers
 include("helpers.jl")
-include("cubature.jl")
+include("approximations/ghcubature.jl")
+include("approximations/srcubature.jl")
+
+
 include("dependency_graph.jl")
 
 # High level abstracts

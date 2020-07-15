@@ -1,40 +1,40 @@
-@structuredVariationalRule(:node_type      => GCV{Cubature},
+@structuredVariationalRule(:node_type      => GCV{GaussHermite},
                            :outbound_type  => Message{GaussianMeanVariance},
                            :inbound_types  => (Nothing, Message{Gaussian},ProbabilityDistribution),
-                           :name           => SVBGCVCubatureOutNGD)
+                           :name           => SVBGCVGaussHermiteOutNGD)
 
-@structuredVariationalRule(:node_type      => GCV{Cubature},
+@structuredVariationalRule(:node_type      => GCV{GaussHermite},
                            :outbound_type  => Message{GaussianMeanVariance},
                            :inbound_types  => (Message{Gaussian},Nothing,ProbabilityDistribution),
-                           :name           => SVBGCVCubatureMGND)
+                           :name           => SVBGCVGaussHermiteMGND)
 
-@structuredVariationalRule(:node_type      => GCV{Cubature},
+@structuredVariationalRule(:node_type      => GCV{GaussHermite},
                            :outbound_type  => Message{Function},
                            :inbound_types  => (ProbabilityDistribution,Nothing),
-                           :name           => SVBGCVCubatureZDN)
+                           :name           => SVBGCVGaussHermiteZDN)
 
-@marginalRule(:node_type      => GCV{Cubature},
+@marginalRule(:node_type      => GCV{GaussHermite},
               :inbound_types  => (Message{Gaussian},Message{Gaussian},ProbabilityDistribution),
-              :name           => MGCVCubatureMGGD)
+              :name           => MGCVGaussHermiteMGGD)
 
-@structuredVariationalRule(:node_type    => GCV{Unscented},
+@structuredVariationalRule(:node_type    => GCV{SphericalRadial},
                          :outbound_type  => Message{GaussianMeanVariance},
                          :inbound_types  => (Nothing, Message{Gaussian},ProbabilityDistribution),
-                         :name           => SVBGCVUnscentedOutNGD)
+                         :name           => SVBGCVSphericalRadialOutNGD)
 
-@structuredVariationalRule(:node_type    => GCV{Unscented},
+@structuredVariationalRule(:node_type    => GCV{SphericalRadial},
                          :outbound_type  => Message{GaussianMeanVariance},
                          :inbound_types  => (Message{Gaussian},Nothing,ProbabilityDistribution),
-                         :name           => SVBGCVUnscentedMGND)
+                         :name           => SVBGCVSphericalRadialMGND)
 
-@structuredVariationalRule(:node_type    => GCV{Unscented},
+@structuredVariationalRule(:node_type    => GCV{SphericalRadial},
                          :outbound_type  => Message{Function},
                          :inbound_types  => (ProbabilityDistribution,Nothing),
-                         :name           => SVBGCVUnscentedZDN)
+                         :name           => SVBGCVSphericalRadialZDN)
 
-@marginalRule(:node_type    => GCV{Unscented},
+@marginalRule(:node_type    => GCV{SphericalRadial},
             :inbound_types  => (Message{Gaussian},Message{Gaussian},ProbabilityDistribution),
-            :name           => MGCVUnscentedMGGD)
+            :name           => MGCVSphericalRadialMGGD)
 
 @structuredVariationalRule(:node_type      => GCV{Laplace},
                           :outbound_type  => Message{GaussianMeanVariance},

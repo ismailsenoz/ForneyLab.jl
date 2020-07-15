@@ -1,25 +1,19 @@
 export
-ruleSVBGCVCubatureOutNGD,
-ruleSVBGCVCubatureMGND,
-ruleSVBGCVCubatureZDN,
-ruleMGCVCubatureMGGD,
-ruleSVBGCVUnscentedOutNGD,
-ruleSVBGCVUnscentedMGND,
-ruleSVBGCVUnscentedZDN,
-ruleMGCVUnscentedMGGD,
+ruleSVBGCVGaussHermiteOutNGD,
+ruleSVBGCVGaussHermiteMGND,
+ruleSVBGCVGaussHermiteZDN,
+ruleMGCVGaussHermiteMGGD,
+ruleSVBGCVSphericalRadialOutNGD,
+ruleSVBGCVSphericalRadialMGND,
+ruleSVBGCVSphericalRadialZDN,
+ruleMGCVSphericalRadialMGGD,
 ruleSVBGCVLaplaceOutNGD,
 ruleSVBGCVLaplaceMGND,
 ruleSVBGCVLaplaceZDN,
 ruleMGCVLaplaceMGGD
 prod!
 
-import LinearAlgebra: mul!, axpy!
-
-const default_alpha = 1e-3
-const default_beta = 2.0
-const default_kappa = 0.0
-
-function ruleSVBGCVCubatureOutNGD(msg_out::Nothing,msg_m::Message{F, Multivariate},dist_z::ProbabilityDistribution{Multivariate}, g::Function) where F<:Gaussian
+function ruleSVBGCVGaussHermiteOutNGD(msg_out::Nothing,msg_m::Message{F, Multivariate},dist_z::ProbabilityDistribution{Multivariate}, g::Function) where F<:Gaussian
     ndims = dims(msg_m.dist)
     mean_z, cov_z = unsafeMeanCov(dist_z)
     mean_m, cov_m = unsafeMeanCov(msg_m.dist)
@@ -37,25 +31,10 @@ function ruleSVBGCVCubatureOutNGD(msg_out::Nothing,msg_m::Message{F, Multivariat
     return Message(Multivariate, GaussianMeanVariance,m=mean_m,v=cov_m+cholinv(Λ_out))
 end
 
-function ruleSVBGCVCubatureMGND(msg_out::Message{F, Multivariate},msg_m::Nothing, dist_z::ProbabilityDistribution{Multivariate}, g::Function) where F<:Gaussian
-    ndims = dims(msg_out.dist)
-    mean_out, cov_out = unsafeMeanCov(msg_out.dist)
-    mean_z, cov_z = unsafeMeanCov(dist_z)
+ruleSVBGCVGaussHermiteMGND(msg_out::Message{F, Multivariate},msg_m::Nothing, dist_z::ProbabilityDistribution{Multivariate}, g::Function) where F<:Gaussian =
+    ruleSVBGCVGaussHermiteOutNGD(msg_m, msg_out, dist_z, g)
 
-    cubature = ghcubature(ndims, 20)
-    weights = getweights(cubature)
-    points  = getpoints(cubature, mean_z, cov_z)
-
-    ginv = Base.Generator(points) do point
-        return cholinv(g(point))
-    end
-
-    Λ_m = mapreduce(t -> t[1] * t[2], +, zip(weights, ginv)) / (pi ^ (ndims / 2))
-
-    return Message(Multivariate, GaussianMeanVariance,m=mean_out,v=cov_out+cholinv(Λ_m))
-end
-
-function ruleSVBGCVCubatureZDN(dist_out_mean::ProbabilityDistribution{Multivariate}, msg_z::Nothing, g::Function)
+function ruleSVBGCVGaussHermiteZDN(dist_out_mean::ProbabilityDistribution{Multivariate}, msg_z::Nothing, g::Function)
     d = Int64(dims(dist_out_mean)/2)
     m_out_mean, cov_out_mean = unsafeMeanCov(dist_out_mean)
     psi = cov_out_mean[1:d,1:d] - cov_out_mean[1:d,d+1:end] - cov_out_mean[d+1:end, 1:d] + cov_out_mean[d+1:end,d+1:end] + (m_out_mean[1:d] - m_out_mean[d+1:end])*(m_out_mean[1:d] - m_out_mean[d+1:end])'
@@ -65,11 +44,11 @@ function ruleSVBGCVCubatureZDN(dist_out_mean::ProbabilityDistribution{Multivaria
         -0.5*(logdet(gz) + tr(cholinv(gz)*psi))
     end
 
-    return Message(Multivariate, Function, log_pdf=l_pdf)
+    return Message(Multivariate, Function, log_pdf = l_pdf, cubature = ghcubature(d, 20))
 end
 
 
-function ruleMGCVCubatureMGGD(msg_out::Message{F1, Multivariate},msg_m::Message{F2, Multivariate},dist_z::ProbabilityDistribution{Multivariate,F3},g::Function) where {F1<:Gaussian,F2<:Gaussian,F3<:Gaussian}
+function ruleMGCVGaussHermiteMGGD(msg_out::Message{F1, Multivariate},msg_m::Message{F2, Multivariate},dist_z::ProbabilityDistribution{Multivariate,F3},g::Function) where {F1<:Gaussian,F2<:Gaussian,F3<:Gaussian}
     ndims = dims(msg_out.dist)
     xi_out, Λ_out = unsafeWeightedMeanPrecision(msg_out.dist)
     xi_mean, Λ_m = unsafeWeightedMeanPrecision(msg_m.dist)
@@ -83,45 +62,95 @@ function ruleMGCVCubatureMGGD(msg_out::Message{F1, Multivariate},msg_m::Message{
 
 end
 
-function ruleSVBGCVUnscentedOutNGD(msg_out::Nothing,msg_m::Message{F, Multivariate},dist_z::ProbabilityDistribution{Multivariate}, g::Function) where F<:Gaussian
+function ruleSVBGCVSphericalRadialOutNGD(msg_out::Nothing,msg_m::Message{F, Multivariate},dist_z::ProbabilityDistribution{Multivariate}, g::Function) where F<:Gaussian
     ndims = dims(msg_m.dist)
     mean_z, cov_z = unsafeMeanCov(dist_z)
     mean_m, cov_m = unsafeMeanCov(msg_m.dist)
 
-    sp, wm, wc = ForneyLab.sigmaPointsAndWeights(mean_z, cov_z; alpha=default_alpha, beta=default_beta, kappa=default_kappa)
+    cubature = srcubature(ndims)
+    weights = getweights(cubature)
+    points  = getpoints(cubature, mean_z, cov_z)
 
-    ginv = Base.Generator(sp) do point
+    ginv = Base.Generator(points) do point
         return cholinv(g(point))
     end
 
-    Λ_out = mapreduce(t -> t[1] * t[2], +, zip(wm, ginv))
+    Λ_out = mapreduce(t -> t[1] * t[2], +, zip(weights, ginv))
 
     return Message(Multivariate, GaussianMeanVariance,m=mean_m,v=cov_m+cholinv(Λ_out))
 end
 
-ruleSVBGCVUnscentedMGND(msg_out::Message{F, Multivariate},msg_m::Nothing, dist_z::ProbabilityDistribution{Multivariate}, g::Function) where F<:Gaussian =
-    ruleSVBGCVUnscentedOutNGD(msg_m,msg_out,dist_z,g)
+ruleSVBGCVSphericalRadialMGND(msg_out::Message{F, Multivariate},msg_m::Nothing, dist_z::ProbabilityDistribution{Multivariate}, g::Function) where F<:Gaussian =
+    ruleSVBGCVSphericalRadialOutNGD(msg_m,msg_out,dist_z,g)
 
-ruleSVBGCVUnscentedZDN(dist_out_mean::ProbabilityDistribution{Multivariate}, msg_z::Nothing, g::Function) =
-    ruleSVBGCVCubatureZDN(dist_out_mean,msg_z,g)
+function ruleSVBGCVSphericalRadialZDN(dist_out_mean::ProbabilityDistribution{Multivariate}, msg_z::Nothing, g::Function)
+    d = Int64(dims(dist_out_mean)/2)
+    m_out_mean, cov_out_mean = unsafeMeanCov(dist_out_mean)
+    psi = cov_out_mean[1:d,1:d] - cov_out_mean[1:d,d+1:end] - cov_out_mean[d+1:end, 1:d] + cov_out_mean[d+1:end,d+1:end] + (m_out_mean[1:d] - m_out_mean[d+1:end])*(m_out_mean[1:d] - m_out_mean[d+1:end])'
 
-function ruleMGCVUnscentedMGGD(msg_out::Message{F1, Multivariate},msg_m::Message{F2, Multivariate},dist_z::ProbabilityDistribution{Multivariate,F3},g::Function) where {F1<:Gaussian,F2<:Gaussian,F3<:Gaussian}
+    l_pdf(z) = begin
+        gz = g(z)
+        -0.5*(logdet(gz) + tr(cholinv(gz)*psi))
+    end
+
+    return Message(Multivariate, Function, log_pdf = l_pdf, cubature = srcubature(d))
+end
+
+function ruleMGCVSphericalRadialMGGD(msg_out::Message{F1, Multivariate},msg_m::Message{F2, Multivariate},dist_z::ProbabilityDistribution{Multivariate,F3},g::Function) where {F1<:Gaussian,F2<:Gaussian,F3<:Gaussian}
     ndims = dims(msg_out.dist)
     xi_out, Λ_out = unsafeWeightedMeanPrecision(msg_out.dist)
     xi_mean, Λ_m = unsafeWeightedMeanPrecision(msg_m.dist)
     mean_z, cov_z = unsafeMeanCov(dist_z)
 
-    sp, wm, wc = ForneyLab.sigmaPointsAndWeights(mean_z, cov_z; alpha=default_alpha, beta=default_beta, kappa=default_kappa)
+    cubature = srcubature(ndims)
+    weights = getweights(cubature)
+    points  = getpoints(cubature, mean_z, cov_z)
 
-    ginv = Base.Generator(sp) do point
+    ginv = Base.Generator(points) do point
         return cholinv(g(point))
     end
 
-    Λ = mapreduce(t -> t[1] * t[2], +, zip(wm, ginv))
+    Λ = mapreduce(t -> t[1] * t[2], +, zip(weights, ginv))
 
     W = [ Λ + Λ_out -Λ; -Λ Λ_m + Λ] # + 1e-8*diageye(2*d)
     return ProbabilityDistribution(Multivariate, GaussianWeightedMeanPrecision, xi=[xi_out;xi_mean], w = W)
 
+end
+
+@symmetrical function prod!(
+    x::ProbabilityDistribution{Multivariate, Function},
+    y::ProbabilityDistribution{Multivariate, F},
+    z::ProbabilityDistribution{Multivariate, GaussianMeanVariance}=ProbabilityDistribution(Multivariate, GaussianMeanVariance, m=zeros(3), v=diageye(3))) where {F<:Gaussian}
+
+    y = convert(ProbabilityDistribution{Multivariate,GaussianMeanVariance},y)
+    ndims = dims(y)
+
+    # @show y
+
+    g(s) = exp(x.params[:log_pdf](s))
+    cubature = x.params[:cubature]
+
+    m, V = approximate_meancov(cubature, g, y)
+
+    z.params[:m] = m
+    z.params[:v] = V
+    return z
+end
+
+import NLsolve: nlsolve
+import ReverseDiff
+
+function NewtonMethod(g::Function,x_0::Array{Float64},n_its::Int64)
+    dim = length(x_0)
+
+    grad_g = (x) -> ReverseDiff.gradient(g, x)
+
+    r = nlsolve(grad_g, x_0, method = :newton, ftol = 1e-8)
+
+    x = r.zero
+    cov = cholinv(-ForwardDiff.jacobian(grad_g, x))
+
+    return x, cov
 end
 
 function collectStructuredVariationalNodeInbounds(node::GCV, entry::ScheduleEntry)
@@ -194,66 +223,4 @@ function collectMarginalNodeInbounds(node::GCV, entry::MarginalEntry)
 
 
     return inbounds
-end
-
-@symmetrical function prod!(
-    x::ProbabilityDistribution{Multivariate, Function},
-    y::ProbabilityDistribution{Multivariate, F},
-    z::ProbabilityDistribution{Multivariate, GaussianMeanVariance}=ProbabilityDistribution(Multivariate, GaussianMeanVariance, m=zeros(3), v=diageye(3))) where {F<:Gaussian}
-
-    y = convert(ProbabilityDistribution{Multivariate,GaussianMeanVariance},y)
-    ndims = dims(y)
-
-    # @show y
-    g(s) = exp(x.params[:log_pdf](s))*s
-
-    ms, Vs = unsafeMeanCov(y)
-    m, V, _ = unscentedStatistics(ms, Vs, g; alpha=default_alpha, beta=default_beta, kappa=default_kappa)
-    z.params[:m] = m
-    z.params[:v] = V
-    return z
-end
-
-#
-# @symmetrical function prod!(
-#     x::ProbabilityDistribution{Multivariate, Function},
-#     y::ProbabilityDistribution{Multivariate, F},
-#     z::ProbabilityDistribution{Multivariate, GaussianMeanVariance}=ProbabilityDistribution(Multivariate, GaussianMeanVariance, m=zeros(3), v=diageye(3))) where {F<:Gaussian}
-#
-#     y = convert(ProbabilityDistribution{Multivariate,GaussianMeanVariance},y)
-#     ndims = dims(y)
-#
-#     # @show y
-#
-#     g(s) = exp(x.params[:log_pdf](s))
-#
-#     cubature = ghcubature(ndims, 20)
-#     m, V = approximate_meancov(cubature, g, y)
-#
-#     z.params[:m] = m
-#     z.params[:v] = V
-#     return z
-# end
-
-import NLsolve: nlsolve
-
-function NewtonMethod(g::Function,x_0::Array{Float64},n_its::Int64)
-    dim = length(x_0)
-
-    grad_g = (x) -> ForwardDiff.gradient(g, x)
-    hess_g = (x) -> ForwardDiff.hessian(g, x)
-
-    r = nlsolve(grad_g, hess_g, x_0, method = :newton, ftol = 1e-8)
-
-    # @show x_0
-    # @show r.zero
-    # @show grad_g(r.zero)
-
-    x = r.zero
-    # @show -ForwardDiff.hessian(g, x)
-    # @show r.trace
-    cov = cholinv(-ForwardDiff.hessian(g, x))
-
-
-    return x, cov
 end

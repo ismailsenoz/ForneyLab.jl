@@ -1,7 +1,8 @@
-export GCV, Cubature, Laplace
+export GCV, GaussHermite, SphericalRadial, Laplace
 
 abstract type ApproximationMethod end
-abstract type Cubature <: ApproximationMethod end
+abstract type GaussHermite <: ApproximationMethod end
+abstract type SphericalRadial <: ApproximationMethod end
 abstract type Laplace <: ApproximationMethod end
 
 
@@ -11,7 +12,7 @@ mutable struct GCV{T<:ApproximationMethod} <: SoftFactor
     i::Dict{Symbol, Interface}
     g::Function # Matrix valued positive definite function that expresses the output vector as a function of the input.
 
-    function GCV{Cubature}(out, m, z, g::Function; id=ForneyLab.generateId(GCV{Cubature}))
+    function GCV{GaussHermite}(out, m, z, g::Function; id=ForneyLab.generateId(GCV{GaussHermite}))
         @ensureVariables(out, m, z)
         self = new(id, Vector{Interface}(undef, 3), Dict{Symbol,Interface}(), g)
         ForneyLab.addNode!(currentGraph(), self)
@@ -22,7 +23,7 @@ mutable struct GCV{T<:ApproximationMethod} <: SoftFactor
         return self
     end
 
-    function GCV{Unscented}(out, m, z, g::Function; id=ForneyLab.generateId(GCV{Cubature}))
+    function GCV{SphericalRadial}(out, m, z, g::Function; id=ForneyLab.generateId(GCV{SphericalRadial}))
         @ensureVariables(out, m, z)
         self = new(id, Vector{Interface}(undef, 3), Dict{Symbol,Interface}(), g)
         ForneyLab.addNode!(currentGraph(), self)
@@ -45,13 +46,13 @@ mutable struct GCV{T<:ApproximationMethod} <: SoftFactor
     end
 end
 
-function GCV(out, in1, g::Function; id=ForneyLab.generateId(GCV{Cubature}))
-    return GCV{Cubature}(out, m, z, g::Function;id=id)
+function GCV(out, in1, g::Function; id=ForneyLab.generateId(GCV{GaussHermite}))
+    return GCV{GaussHermite}(out, m, z, g::Function;id=id)
 end
 
 slug(::Type{GCV}) = "GCV"
 
-function averageEnergy(Node::Type{GCV{Cubature}}, marg_out_mean::ProbabilityDistribution{Multivariate, F1}, marg_z::ProbabilityDistribution{Multivariate, F2}, g::Function) where { F1 <:Gaussian, F2 <:Gaussian }
+function averageEnergy(Node::Type{GCV{GaussHermite}}, marg_out_mean::ProbabilityDistribution{Multivariate, F1}, marg_z::ProbabilityDistribution{Multivariate, F2}, g::Function) where { F1 <:Gaussian, F2 <:Gaussian }
     (m, V) = unsafeMeanCov(marg_out_mean)
     (mz,Vz) = unsafeMeanCov(marg_z)
 
@@ -74,23 +75,21 @@ function averageEnergy(Node::Type{GCV{Cubature}}, marg_out_mean::ProbabilityDist
     0.5*tr( Λ_out*( V[1:d,1:d] - V[1:d,d+1:end] - V[d+1:end,1:d] + V[d+1:end,d+1:end] + (m[1:d] - m[d+1:end])*(m[1:d] - m[d+1:end])' ) )
 end
 
-const default_alpha = 1e-3
-const default_beta = 2.0
-const default_kappa = 0.0
-
-function averageEnergy(Node::Type{GCV{Unscented}}, marg_out_mean::ProbabilityDistribution{Multivariate, F1}, marg_z::ProbabilityDistribution{Multivariate, F2}, g::Function) where { F1 <:Gaussian, F2 <:Gaussian }
+function averageEnergy(Node::Type{GCV{SphericalRadial}}, marg_out_mean::ProbabilityDistribution{Multivariate, F1}, marg_z::ProbabilityDistribution{Multivariate, F2}, g::Function) where { F1 <:Gaussian, F2 <:Gaussian }
     (m, V) = unsafeMeanCov(marg_out_mean)
     (mz,Vz) = unsafeMeanCov(marg_z)
     d = Int64(dims(marg_out_mean) / 2)
 
-    sp, wm, wc = ForneyLab.sigmaPointsAndWeights(mz, Vz; alpha=default_alpha, beta=default_beta, kappa=default_kappa)
+    cubature = srcubature(d)
+    weights  = getweights(cubature)
+    points   = getpoints(cubature, mz, Vz)
 
-    gs = Base.Generator(sp) do point
+    gs = Base.Generator(points) do point
         return g(point)
     end
 
-    Λ_out = mapreduce(t -> t[1] * cholinv(t[2]), +, zip(wm, gs))
-    log_det_sum = mapreduce(t -> t[1] * logdet(t[2]), +, zip(wm, gs))
+    Λ_out = mapreduce(t -> t[1] * cholinv(t[2]), +, zip(weights, gs))
+    log_det_sum = mapreduce(t -> t[1] * logdet(t[2]), +, zip(weights, gs))
 
     @views 0.5*d*log(2*pi) +
     0.5*log_det_sum +
