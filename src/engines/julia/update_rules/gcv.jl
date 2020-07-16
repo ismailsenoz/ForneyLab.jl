@@ -138,6 +138,36 @@ end
 ruleSVBGCVLaplaceMGND(msg_out::Message{F, Multivariate},msg_m::Nothing, dist_z::ProbabilityDistribution{Multivariate}, g::Function) where F<:Gaussian =
     ruleSVBGCVLaplaceOutNGD(msg_m, msg_out, dist_z, g)
 
+
+import Plots: plot, scatter!, plot!, theme, pyplot
+import PlotThemes
+
+function __plot(f, points)
+    a = -5
+    b = 5
+    n = 200
+    d = (b - a) / n
+    x = range(a,stop=b,length=n)
+    y = range(a,stop=b,length=n)
+    # integral = 0.0
+    # for xp in x
+    #     for yp in y
+    #         integral += d^2 * (exp.(logpdf([ xp, yp ])) ./ norm) .* exp.(logPdf(msg_mean.dist, [ xp, yp ]))
+    #     end
+    # end
+    # f(x,y) = exp.(logpdf([ x, y ])) ./ norm .* exp.(logPdf(msg_mean.dist, [ x, y ]))
+    # @show integral
+    # pyplot()
+    # theme(:sand)
+    p = plot(x,y,f, st = :surface, svg = true, camera = (-45, 45))
+    # grad_g = (x) -> ReverseDiff.gradient(g, x)
+    # xzero = r.zero
+    for point in points
+        p = scatter!([ point[1][1] ], [ point[1][2] ], [ f(point[1][1], point[1][2]) ], fillalpha = 1.0, color = point[2], ms = [ 15 ])
+    end
+    display(p)
+end
+
 function ruleSVBGCVLaplaceZDN(dist_out_mean::ProbabilityDistribution{Multivariate}, msg_z::Message{F, Multivariate}, g::Function) where F <: Gaussian
     d = Int64(dims(dist_out_mean)/2)
     m_out_mean, cov_out_mean = unsafeMeanCov(dist_out_mean)
@@ -150,6 +180,7 @@ function ruleSVBGCVLaplaceZDN(dist_out_mean::ProbabilityDistribution{Multivariat
 
     epoint = ForneyLab.unsafeMean(msg_z.dist)
     epoint[1] += tiny
+
     mean, cov = NewtonMethod((s) -> exp(l_pdf(s) + logPdf(msg_z.dist, s)), epoint)
 
     # smoothRTSMessage(m_tilde, V_tilde, C_tilde, m_fw_in, V_fw_in, m_bw_out, V_bw_out)
@@ -203,20 +234,81 @@ import ReverseDiff
 function NewtonMethod(g::Function, x_0::Array{Float64})
     dim = length(x_0)
 
-    grad_g = (x) -> ReverseDiff.gradient(g, x)
+    grad_g = (x) -> ForwardDiff.gradient(g, x)
+    mode   = gradientOptimization(g, grad_g, x_0, 0.01)
 
-    r = nlsolve(grad_g, x_0, method = :newton, ftol = 1e-8)
+    # x = x_0
+    # for i = 1:10
+    #     grad    = ReverseDiff.gradient(g,x)
+    #     hessian = ForwardDiff.jacobian((s) -> ReverseDiff.gradient(g, s), x)
+    #     var = -cholinv(hessian)
+    #     @show var * grad
+    #     x = x + var * grad
+    # end
 
-    x = r.zero
-    @show grad_g(x)
-    @show g(x)
-    @show ForwardDiff.jacobian(grad_g, x)
-    @show converged(r)
+    # __plot(
+    #     (x, y) -> g([ x, y ]),
+    #     [ [ x_0, :red ], [ x, :green ], [ mode, :black ] ]
+    # )
+    #
+    # @show x_0
+    # @show x
+    # @show mode
+
+    # r = nlsolve(grad_g, x_0, method = :newton, ftol = 1e-50)
+    #
+    # x = r.zero
+    # @show grad_g(x)
+    # @show g(x)
+    # @show ForwardDiff.jacobian(grad_g, x)
+    # @show converged(r)
+    # @show r
+    #
+
+    # @show mode
+
+    cov  = cholinv(-ForwardDiff.hessian(g, mode))
+
+    return mode, cov
+end
+
+function NewtonMethod2(g::Function, x_0::Array{Float64})
+    dim = length(x_0)
+
+    grad = (s) -> -ReverseDiff.gradient(g, s)
+    hess = (s) -> ForwardDiff.hessian(g, s)
+
+    r = nlsolve(grad, hess, x_0, method = :newton, ftol = 1e-8)
+
+    mode = r.zero
+
     @show r
+    @show mode
 
-    cov = cholinv(-ForwardDiff.jacobian(grad_g, x))
+    cov  = cholinv(-ForwardDiff.hessian(g, mode))
 
-    return x, cov
+    return x, var
+end
+
+function NewtonMethod3(g::Function, x_0::Array{Float64})
+    dim   = length(x_0)
+    n_its = 25
+
+    grad = (s) -> ReverseDiff.gradient(g, s)
+
+    mode = x_0
+    for i = 1:10
+        grad = ReverseDiff.gradient(g, mode)
+        hess = ForwardDiff.hessian(g, mode)
+        var = -cholinv(hess)
+        mode = mode + var * grad
+    end
+
+    @show mode
+
+    # cov  = cholinv(-ForwardDiff.hessian(g, mode))
+
+    return mode, nothing
 end
 
 function collectStructuredVariationalNodeInbounds(node::GCV, entry::ScheduleEntry)

@@ -50,7 +50,7 @@ function ruleSPNonlinearSInGX(g::Function,
                               msg_out::Message{<:Gaussian, V},
                               msgs_in::Vararg{Message{<:Gaussian, V}};
                               n_samples=default_n_samples) where V<:VariateType
-    
+
     # Extract joint statistics of inbound messages
     (ms_fw_in, Vs_fw_in) = collectStatistics(msgs_in...) # Return arrays with individual means and covariances
     (m_fw_in, V_fw_in, ds) = concatenateGaussianMV(ms_fw_in, Vs_fw_in) # Concatenate individual statistics into joint statistics
@@ -79,7 +79,7 @@ end
 function ruleMNonlinearSInGX(g::Function,
                              msg_out::Message{<:Gaussian, V},
                              msgs_in::Vararg{Message{<:Gaussian, V}}) where V<:VariateType
-    
+
     # Extract joint statistics of inbound messages
     (ms_fw_in, Vs_fw_in) = collectStatistics(msgs_in...) # Return arrays with individual means and covariances
     (m_fw_in, V_fw_in, ds) = concatenateGaussianMV(ms_fw_in, Vs_fw_in) # Concatenate individual statistics into joint statistics
@@ -119,7 +119,7 @@ end
     log_joint(s) = logPdf(y,s) + logPdf(x,s)
     d_log_joint(s) = ForwardDiff.derivative(log_joint, s)
     m_initial = unsafeMean(y)
-    
+
     mean = gradientOptimization(log_joint, d_log_joint, m_initial, 0.01)
     prec = -ForwardDiff.derivative(d_log_joint, mean)
 
@@ -260,7 +260,7 @@ function gradientOptimization(log_joint::Function, d_log_joint::Function, m_init
         m_total .+= m_old
         m_average = m_total ./ step_count
         if step_count > 10
-            if sum(sqrt.(((m_new.-m_average)./m_average).^2)) < dim_tot*0.1
+            if sum(sqrt.(((m_new.-m_average)./m_average).^2)) < dim_tot*0.001
                 satisfied = true
             end
         end
