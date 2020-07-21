@@ -141,7 +141,7 @@ function ruleMGaussianMeanPrecisionFGD(msg_out::Message{Function,Multivariate},
     try
         # @show point1
         m_joint, v_joint = NewtonMethod(l, [ point1; m_mean ])
-        return ProbabilityDistribution(Multivariate,GaussianMeanVariance,m=m_joint2,v=v_joint2)
+        return ProbabilityDistribution(Multivariate,GaussianMeanVariance,m=m_joint,v=v_joint)
     catch e
         # println(approximate_norm(cubature, (z) -> exp.(logpdf(z)) / norm, msg_fwd.dist))
         # a = -5
