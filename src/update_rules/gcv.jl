@@ -5,6 +5,16 @@
 
 @structuredVariationalRule(:node_type      => GCV{GaussHermite},
                            :outbound_type  => Message{GaussianMeanVariance},
+                           :inbound_types  => (Nothing, Message{Function},ProbabilityDistribution),
+                           :name           => SVBGCVGaussHermiteOutGFD)
+
+@structuredVariationalRule(:node_type      => GCV{GaussHermite},
+                           :outbound_type  => Message{GaussianMeanVariance},
+                           :inbound_types  => (Message{Function}, Nothing,ProbabilityDistribution),
+                           :name           => SVBGCVGaussHermiteMFGD)
+
+@structuredVariationalRule(:node_type      => GCV{GaussHermite},
+                           :outbound_type  => Message{GaussianMeanVariance},
                            :inbound_types  => (Message{Gaussian},Nothing,ProbabilityDistribution),
                            :name           => SVBGCVGaussHermiteMGND)
 
@@ -16,6 +26,10 @@
 @marginalRule(:node_type      => GCV{GaussHermite},
               :inbound_types  => (Message{Gaussian},Message{Gaussian},ProbabilityDistribution),
               :name           => MGCVGaussHermiteMGGD)
+
+@marginalRule(:node_type      => GCV{GaussHermite},
+              :inbound_types  => (Message{Function},Message{Gaussian},ProbabilityDistribution),
+              :name           => MGCVGaussHermiteFGD)
 
 @structuredVariationalRule(:node_type    => GCV{SphericalRadial},
                          :outbound_type  => Message{GaussianMeanVariance},

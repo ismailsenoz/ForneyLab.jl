@@ -11,6 +11,9 @@ ruleSVBGCVLaplaceOutNGD,
 ruleSVBGCVLaplaceMGND,
 ruleSVBGCVLaplaceZDN,
 ruleMGCVLaplaceMGGD,
+ruleMGCVGaussHermiteFGD,
+ruleSVBGCVGaussHermiteOutGFD,
+ruleSVBGCVGaussHermiteMFGD,
 prod!
 
 function ruleSVBGCVGaussHermiteOutNGD(msg_out::Nothing,msg_m::Message{F, Multivariate},dist_z::ProbabilityDistribution{Multivariate}, g::Function) where F<:Gaussian
@@ -33,6 +36,29 @@ end
 
 ruleSVBGCVGaussHermiteMGND(msg_out::Message{F, Multivariate},msg_m::Nothing, dist_z::ProbabilityDistribution{Multivariate}, g::Function) where F<:Gaussian =
     ruleSVBGCVGaussHermiteOutNGD(msg_m, msg_out, dist_z, g)
+
+## Many layers
+
+function ruleSVBGCVGaussHermiteOutGFD(msg_out::Message{F, Multivariate},msg_m::Message{Function, Multivariate},dist_z::ProbabilityDistribution{Multivariate}, g::Function) where { F <: Gaussian }
+    ndims = dims(msg_out.dist)
+    mean_z, cov_z = unsafeMeanCov(dist_z)
+    # mean_m, cov_m = unsafeMeanCov(msg_m.dist)
+
+    cubature = ghcubature(ndims, 20)
+    weights = getweights(cubature)
+    points  = getpoints(cubature, mean_z, cov_z)
+
+    mean_m, cov_v = approximate_meancov(cubature, msg_m.dist.params[:log_pdf], msg_out.dist)
+    
+    message = Message(Multivariate, GaussianMeanVariance, m = mean_m, v = cov_v)
+
+    return ruleSVBGCVGaussHermiteOutNGD(nothing, message, dist_z, g)
+end
+
+ruleSVBGCVGaussHermiteMFGD(msg_out::Message{Function, Multivariate}, msg_m::Message{F, Multivariate}, dist_z::ProbabilityDistribution{Multivariate}, g::Function) where { F <: Gaussian } = 
+    ruleSVBGCVGaussHermiteOutGFD(msg_m, msg_out, dist_z, g)
+
+## 
 
 function ruleSVBGCVGaussHermiteZDN(dist_out_mean::ProbabilityDistribution{Multivariate}, msg_z::Nothing, g::Function)
     d = Int64(dims(dist_out_mean)/2)
@@ -59,7 +85,21 @@ function ruleMGCVGaussHermiteMGGD(msg_out::Message{F1, Multivariate},msg_m::Mess
 
     W = [ Λ + Λ_out -Λ; -Λ Λ_m + Λ] # + 1e-8*diageye(2*d)
     return ProbabilityDistribution(Multivariate, GaussianWeightedMeanPrecision, xi=[xi_out;xi_mean], w = W)
+end
 
+function ruleMGCVGaussHermiteFGD(msg_out::Message{Function, Multivariate},msg_m::Message{F2, Multivariate},dist_z::ProbabilityDistribution{Multivariate,F3},g::Function) where { F2<:Gaussian,F3<:Gaussian }
+    ndims = dims(msg_m.dist)
+    # xi_out, Λ_out = unsafeWeightedMeanPrecision(msg_out.dist)
+    # xi_mean, Λ_m = unsafeWeightedMeanPrecision(msg_m.dist)
+    dist_z = convert(ProbabilityDistribution{Multivariate,GaussianMeanVariance},dist_z)
+
+    cubature = ghcubature(ndims, 20)
+    Λ = approximate_kernel_expectation(cubature, (z) -> cholinv(g(z)), dist_z)
+
+    # W = [ Λ + Λ_out -Λ; -Λ Λ_m + Λ] # + 1e-8*diageye(2*d)
+
+    return ruleMGaussianMeanPrecisionFGD(msg_out, msg_m, ProbabilityDistribution(MatrixVariate, PointMass, m = Λ))
+    # return ProbabilityDistribution(Multivariate, GaussianWeightedMeanPrecision, xi=[xi_out;xi_mean], w = W)
 end
 
 function ruleSVBGCVSphericalRadialOutNGD(msg_out::Nothing,msg_m::Message{F, Multivariate},dist_z::ProbabilityDistribution{Multivariate}, g::Function) where F<:Gaussian
@@ -326,6 +366,10 @@ function collectStructuredVariationalNodeInbounds(node::GCV, entry::ScheduleEntr
                 # @show inbound_interface
                 haskey(interface_to_schedule_entry, inbound_interface) || error("The GCV{Laplace} node's backward rule uses the incoming message on the input edge to determine the approximation point. Try altering the variable order in the scheduler to first perform a forward pass.")
                 push!(inbounds, interface_to_schedule_entry[inbound_interface])
+            elseif entry.message_update_rule == SVBGCVGaussHermiteOutGFD || entry.message_update_rule == SVBGCVGaussHermiteMFGD
+                haskey(interface_to_schedule_entry, inbound_interface) || error("The GCV{Laplace} node's backward rule uses the incoming message on the input edge to determine the approximation point. Try altering the variable order in the scheduler to first perform a forward pass.")
+                push!(inbounds, interface_to_schedule_entry[inbound_interface])
+                @show 1
             else
                 push!(inbounds, nothing)
             end

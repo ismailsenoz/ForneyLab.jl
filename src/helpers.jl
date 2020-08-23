@@ -81,6 +81,7 @@ function safeChol(A::Hermitian)
     end
 end
 cholinv(M::AbstractMatrix) = inv(safeChol(Hermitian(Matrix(M))))
+# cholinv(M::AbstractMatrix) = inv(M)
 # function cholinv(M::AbstractMatrix)
 #     try
 #         return inv(cholesky(Hermitian(Matrix(M))))
