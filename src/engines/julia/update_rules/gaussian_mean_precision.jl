@@ -134,7 +134,8 @@ function ruleMGaussianMeanPrecisionFGD(msg_out::Message{Function,Multivariate},
     msg_fwd = ruleSVBGaussianMeanPrecisionOutVGD(nothing, msg_mean, dist_prec)
     v_mean_inv = cholinv(v_mean)
 
-    l(z) = @views exp.(-0.5 * z'*W*z - 0.5 * (z[d+1:end] - m_mean)' * v_mean_inv * (z[d+1:end] - m_mean) + logpdf(z[1:d]))
+    l(z) = @views -0.5 * z'*W*z - 0.5 * (z[d+1:end] - m_mean)' * v_mean_inv * (z[d+1:end] - m_mean) + logpdf(z[1:d])
+
     #Expansion point
     point1 = unsafeMean(msg_fwd.dist * msg_out.dist)
 
@@ -143,6 +144,7 @@ function ruleMGaussianMeanPrecisionFGD(msg_out::Message{Function,Multivariate},
         m_joint, v_joint = NewtonMethod(l, [ point1; m_mean ])
         return ProbabilityDistribution(Multivariate,GaussianMeanVariance,m=m_joint,v=v_joint)
     catch e
+        println("fallback")
         # println(approximate_norm(cubature, (z) -> exp.(logpdf(z)) / norm, msg_fwd.dist))
         # a = -5
         # b = 5

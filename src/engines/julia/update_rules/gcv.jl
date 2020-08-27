@@ -221,7 +221,7 @@ function ruleSVBGCVLaplaceZDN(dist_out_mean::ProbabilityDistribution{Multivariat
     epoint = ForneyLab.unsafeMean(msg_z.dist)
     epoint[1] += tiny
 
-    mean, cov = NewtonMethod((s) -> exp(l_pdf(s) + logPdf(msg_z.dist, s)), epoint)
+    mean, cov = NewtonMethod((s) -> l_pdf(s) + logPdf(msg_z.dist, s), epoint)
 
     # smoothRTSMessage(m_tilde, V_tilde, C_tilde, m_fw_in, V_fw_in, m_bw_out, V_bw_out)
 
