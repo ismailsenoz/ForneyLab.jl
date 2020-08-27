@@ -1,11 +1,14 @@
 
 import LinearAlgebra: mul!, axpy!
 
-# const sigma_points = [-2.0201828704560856, -0.9585724646138196, -8.881784197001252e-16, 0.9585724646138196, 2.0201828704560856]
-# const sigma_weights = [0.019953242059045872, 0.3936193231522407, 0.9453087204829428, 0.3936193231522407, 0.019953242059045872]
+const sigma_points_5 = [-2.0201828704560856, -0.9585724646138196, -8.881784197001252e-16, 0.9585724646138196, 2.0201828704560856]
+const sigma_weights_5 = [0.019953242059045872, 0.3936193231522407, 0.9453087204829428, 0.3936193231522407, 0.019953242059045872]
 
-const sigma_points = [-5.387480890011233, -4.603682449550744, -3.9447640401156265, -3.3478545673832163, -2.7888060584281296, -2.2549740020892757, -1.7385377121165857, -1.2340762153953255, -0.7374737285453978, -0.24534070830090382, 0.24534070830090382, 0.7374737285453978, 1.2340762153953255, 1.7385377121165857, 2.2549740020892757, 2.7888060584281296, 3.3478545673832163, 3.9447640401156265, 4.603682449550744, 5.387480890011233]
-const sigma_weights = [2.2293936455341583e-13, 4.399340992273223e-10, 1.0860693707692783e-7, 7.802556478532184e-6, 0.00022833863601635774, 0.0032437733422378905, 0.024810520887463966, 0.10901720602002457, 0.28667550536283243, 0.4622436696006102, 0.4622436696006102, 0.28667550536283243, 0.10901720602002457, 0.024810520887463966, 0.0032437733422378905, 0.00022833863601635774, 7.802556478532184e-6, 1.0860693707692783e-7, 4.399340992273223e-10, 2.2293936455341583e-13]
+const sigma_points_20 = [-5.387480890011233, -4.603682449550744, -3.9447640401156265, -3.3478545673832163, -2.7888060584281296, -2.2549740020892757, -1.7385377121165857, -1.2340762153953255, -0.7374737285453978, -0.24534070830090382, 0.24534070830090382, 0.7374737285453978, 1.2340762153953255, 1.7385377121165857, 2.2549740020892757, 2.7888060584281296, 3.3478545673832163, 3.9447640401156265, 4.603682449550744, 5.387480890011233]
+const sigma_weights_20 = [2.2293936455341583e-13, 4.399340992273223e-10, 1.0860693707692783e-7, 7.802556478532184e-6, 0.00022833863601635774, 0.0032437733422378905, 0.024810520887463966, 0.10901720602002457, 0.28667550536283243, 0.4622436696006102, 0.4622436696006102, 0.28667550536283243, 0.10901720602002457, 0.024810520887463966, 0.0032437733422378905, 0.00022833863601635774, 7.802556478532184e-6, 1.0860693707692783e-7, 4.399340992273223e-10, 2.2293936455341583e-13]
+
+const sigma_points_2 = [-0.7071067811865476, 0.7071067811865476]
+const sigma_weights_2 = [0.8862269254527579, 0.8862269254527579]
 
 const product = Iterators.product
 const repeated = Iterators.repeated
@@ -18,27 +21,28 @@ function multiDimensionalPointsWeightsGrid(ndims::Int, p::Int)
     # we use fixed p = 20 for the beginning
 
     # creates lazy multi-dimensional grid
-    witer = product(repeated(sigma_weights, ndims)...)
-    piter = product(repeated(sigma_points, ndims)...)
+    witer = product(repeated(sigma_weights_2, ndims)...)
+    piter = product(repeated(sigma_points_2, ndims)...)
 
     return witer, piter
 end
 
 struct GaussHermiteCubature{WI, PI}
-    ndims :: Int
-    p     :: Int
-    witer :: WI
-    piter :: PI
+    ndims  :: Int
+    p      :: Int
+    witer  :: WI
+    piter  :: PI
+    sqrtpi :: Float64
 end
 
 function ghcubature(ndims::Int, p::Int)
     witer, piter = multiDimensionalPointsWeightsGrid(ndims, p)
-    return GaussHermiteCubature(ndims, p, witer, piter)
+    return GaussHermiteCubature(ndims, p, witer, piter, (pi ^ (ndims / 2)))
 end
 
 function getweights(cubature::GaussHermiteCubature)
     return Base.Generator(cubature.witer) do pweight
-        return prod(pweight)
+        return prod(pweight) / cubature.sqrtpi
     end
 end
 
@@ -66,8 +70,6 @@ function approximate_meancov(cubature::GaussHermiteCubature, g, distribution)
     norm = 0.0
     mean = zeros(ndims)
 
-    sqrtpi = (pi ^ (ndims / 2))
-
     for (index, (weight, point)) in enumerate(zip(weights, points))
         gv = g(point)
         cv = weight * gv
@@ -80,10 +82,7 @@ function approximate_meancov(cubature::GaussHermiteCubature, g, distribution)
         @inbounds cs[index] = cv
     end
 
-    norm /= sqrtpi
-
     broadcast!(/, mean, mean, norm)
-    broadcast!(/, mean, mean, sqrtpi)
 
     cov = zeros(ndims, ndims)
     foreach(enumerate(zip(points, cs))) do (index, (point, c))
@@ -92,7 +91,6 @@ function approximate_meancov(cubature::GaussHermiteCubature, g, distribution)
     end
 
     broadcast!(/, cov, cov, norm)
-    broadcast!(/, cov, cov, sqrtpi)
 
     return mean, cov
 end
@@ -112,8 +110,6 @@ function approximate_norm(cubature::GaussHermiteCubature, g, distribution)
         norm += cv
     end
 
-    norm /= (pi ^ (ndims / 2))
-
     return norm
 end
 
@@ -129,7 +125,5 @@ function approximate_kernel_expectation(cubature::GaussHermiteCubature, g, distr
         axpy!(weight, g(point), gbar) # gbar = gbar + weight * g(point)
     end
 
-    sqrtpi = (pi ^ (ndims / 2))
-    broadcast!(/, gbar, gbar, sqrtpi)
     return gbar
 end

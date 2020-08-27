@@ -18,18 +18,11 @@ prod!
 
 function ruleSVBGCVGaussHermiteOutNGD(msg_out::Nothing,msg_m::Message{F, Multivariate},dist_z::ProbabilityDistribution{Multivariate}, g::Function) where F<:Gaussian
     ndims = dims(msg_m.dist)
-    mean_z, cov_z = unsafeMeanCov(dist_z)
     mean_m, cov_m = unsafeMeanCov(msg_m.dist)
 
     cubature = ghcubature(ndims, 20)
-    weights = getweights(cubature)
-    points  = getpoints(cubature, mean_z, cov_z)
 
-    ginv = Base.Generator(points) do point
-        return cholinv(g(point))
-    end
-
-    Λ_out = mapreduce(t -> t[1] * t[2], +, zip(weights, ginv)) / (pi ^ (ndims / 2))
+    Λ_out = approximate_kernel_expectation(cubature, (s) -> cholinv(g(s)), dist_z)
 
     return Message(Multivariate, GaussianMeanVariance,m=mean_m,v=cov_m+cholinv(Λ_out))
 end
@@ -108,14 +101,9 @@ function ruleSVBGCVSphericalRadialOutNGD(msg_out::Nothing,msg_m::Message{F, Mult
     mean_m, cov_m = unsafeMeanCov(msg_m.dist)
 
     cubature = srcubature(ndims)
-    weights = getweights(cubature)
-    points  = getpoints(cubature, mean_z, cov_z)
 
-    ginv = Base.Generator(points) do point
-        return cholinv(g(point))
-    end
-
-    Λ_out = mapreduce(t -> t[1] * t[2], +, zip(weights, ginv))
+    # Λ_out = approximate_kernel_expectation(cubature, (s) -> cholinv(g(s)), dist_z)
+    Λ_out = unscentedStatistics(cubature, (s) -> cholinv(g(s)), dist_z)
 
     return Message(Multivariate, GaussianMeanVariance,m=mean_m,v=cov_m+cholinv(Λ_out))
 end
@@ -143,14 +131,9 @@ function ruleMGCVSphericalRadialMGGD(msg_out::Message{F1, Multivariate},msg_m::M
     mean_z, cov_z = unsafeMeanCov(dist_z)
 
     cubature = srcubature(ndims)
-    weights = getweights(cubature)
-    points  = getpoints(cubature, mean_z, cov_z)
 
-    ginv = Base.Generator(points) do point
-        return cholinv(g(point))
-    end
-
-    Λ = mapreduce(t -> t[1] * t[2], +, zip(weights, ginv))
+    # Λ = approximate_kernel_expectation(cubature, (s) -> cholinv(g(s)), dist_z)
+    Λ = unscentedStatistics(cubature, (s) -> cholinv(g(s)), dist_z)
 
     W = [ Λ + Λ_out -Λ; -Λ Λ_m + Λ] # + 1e-8*diageye(2*d)
     return ProbabilityDistribution(Multivariate, GaussianWeightedMeanPrecision, xi=[xi_out;xi_mean], w = W)
@@ -163,14 +146,9 @@ function ruleSVBGCVLaplaceOutNGD(msg_out::Nothing,msg_m::Message{F, Multivariate
     mean_m, cov_m = unsafeMeanCov(msg_m.dist)
 
     cubature = srcubature(ndims)
-    weights = getweights(cubature)
-    points  = getpoints(cubature, mean_z, cov_z)
 
-    ginv = Base.Generator(points) do point
-        return cholinv(g(point))
-    end
-
-    Λ_out = mapreduce(t -> t[1] * t[2], +, zip(weights, ginv)) / (pi ^ (ndims / 2))
+    # Λ = approximate_kernel_expectation(cubature, (s) -> cholinv(g(s)), dist_z)
+    Λ = unscentedStatistics(cubature, (s) -> cholinv(g(s)), dist_z)
 
     return Message(Multivariate, GaussianMeanVariance,m=mean_m,v=cov_m+cholinv(Λ_out))
 end
@@ -178,35 +156,6 @@ end
 ruleSVBGCVLaplaceMGND(msg_out::Message{F, Multivariate},msg_m::Nothing, dist_z::ProbabilityDistribution{Multivariate}, g::Function) where F<:Gaussian =
     ruleSVBGCVLaplaceOutNGD(msg_m, msg_out, dist_z, g)
 
-
-import Plots: plot, scatter!, plot!, theme, pyplot
-import PlotThemes
-
-function __plot(f, points)
-    a = -5
-    b = 5
-    n = 200
-    d = (b - a) / n
-    x = range(a,stop=b,length=n)
-    y = range(a,stop=b,length=n)
-    # integral = 0.0
-    # for xp in x
-    #     for yp in y
-    #         integral += d^2 * (exp.(logpdf([ xp, yp ])) ./ norm) .* exp.(logPdf(msg_mean.dist, [ xp, yp ]))
-    #     end
-    # end
-    # f(x,y) = exp.(logpdf([ x, y ])) ./ norm .* exp.(logPdf(msg_mean.dist, [ x, y ]))
-    # @show integral
-    # pyplot()
-    # theme(:sand)
-    p = plot(x,y,f, st = :surface, svg = true, camera = (-45, 45))
-    # grad_g = (x) -> ReverseDiff.gradient(g, x)
-    # xzero = r.zero
-    for point in points
-        p = scatter!([ point[1][1] ], [ point[1][2] ], [ f(point[1][1], point[1][2]) ], fillalpha = 1.0, color = point[2], ms = [ 15 ])
-    end
-    display(p)
-end
 
 function ruleSVBGCVLaplaceZDN(dist_out_mean::ProbabilityDistribution{Multivariate}, msg_z::Message{F, Multivariate}, g::Function) where F <: Gaussian
     d = Int64(dims(dist_out_mean)/2)
@@ -235,14 +184,9 @@ function ruleMGCVLaplaceMGGD(msg_out::Message{F1, Multivariate},msg_m::Message{F
     mean_z, cov_z = unsafeMeanCov(dist_z)
 
     cubature = srcubature(ndims)
-    weights = getweights(cubature)
-    points  = getpoints(cubature, mean_z, cov_z)
 
-    ginv = Base.Generator(points) do point
-        return cholinv(g(point))
-    end
-
-    Λ = mapreduce(t -> t[1] * t[2], +, zip(weights, ginv))
+    # Λ = approximate_kernel_expectation(cubature, (s) -> cholinv(g(s)), dist_z)
+    Λ = unscentedStatistics(cubature, (s) -> cholinv(g(s)), dist_z)
 
     W = [ Λ + Λ_out -Λ; -Λ Λ_m + Λ] # + 1e-8*diageye(2*d)
     return ProbabilityDistribution(Multivariate, GaussianWeightedMeanPrecision, xi=[xi_out;xi_mean], w = W)
@@ -276,38 +220,7 @@ function NewtonMethod(g::Function, x_0::Array{Float64})
 
     grad_g = (x) -> ForwardDiff.gradient(g, x)
     mode   = gradientOptimization(g, grad_g, x_0, 0.01)
-
-    # x = x_0
-    # for i = 1:10
-    #     grad    = ReverseDiff.gradient(g,x)
-    #     hessian = ForwardDiff.jacobian((s) -> ReverseDiff.gradient(g, s), x)
-    #     var = -cholinv(hessian)
-    #     @show var * grad
-    #     x = x + var * grad
-    # end
-
-    # __plot(
-    #     (x, y) -> g([ x, y ]),
-    #     [ [ x_0, :red ], [ x, :green ], [ mode, :black ] ]
-    # )
-    #
-    # @show x_0
-    # @show x
-    # @show mode
-
-    # r = nlsolve(grad_g, x_0, method = :newton, ftol = 1e-50)
-    #
-    # x = r.zero
-    # @show grad_g(x)
-    # @show g(x)
-    # @show ForwardDiff.jacobian(grad_g, x)
-    # @show converged(r)
-    # @show r
-    #
-
-    # @show mode
-
-    cov  = cholinv(-ForwardDiff.hessian(g, mode))
+    cov    = cholinv(-ForwardDiff.hessian(g, mode))
 
     return mode, cov
 end

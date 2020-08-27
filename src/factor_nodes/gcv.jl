@@ -69,9 +69,8 @@ function averageEnergy(Node::Type{GCV{GaussHermite}}, marg_out_mean::Probability
         return g(point)
     end
 
-    sqrtpi = pi ^ (d / 2)
-    Λ_out = mapreduce(t -> t[1] * cholinv(t[2]), +, zip(weights, gs)) / sqrtpi
-    log_det_sum = mapreduce(t -> t[1] * logdet(t[2]), +, zip(weights, gs)) / sqrtpi
+    Λ_out = mapreduce(t -> t[1] * cholinv(t[2]), +, zip(weights, gs))
+    log_det_sum = mapreduce(t -> t[1] * logdet(t[2]), +, zip(weights, gs))
 
     @views 0.5*d*log(2*pi) +
     0.5*log_det_sum +
@@ -91,9 +90,8 @@ function averageEnergy(Node::Type{GCV{SphericalRadial}}, marg_out_mean::Probabil
         return g(point)
     end
 
-    # sqrtpi = pi ^ (d / 2)
-    Λ_out = mapreduce(t -> t[1] * cholinv(t[2]), +, zip(weights, gs)) # / sqrtpi
-    log_det_sum = mapreduce(t -> t[1] * logdet(t[2]), +, zip(weights, gs)) # / sqrtpi
+    Λ_out = mapreduce(t -> t[1] * cholinv(t[2]), +, zip(weights, gs))
+    log_det_sum = mapreduce(t -> t[1] * logdet(t[2]), +, zip(weights, gs))
 
     @views 0.5*d*log(2*pi) +
     0.5*log_det_sum +

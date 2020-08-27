@@ -42,14 +42,31 @@ end
 function approximate_meancov(cubature::SphericalRadialCubature, g, distribution)
     ndims = cubature.ndims
 
-    c    = spherical_expectations(cubature, g, distribution)
-    mean = spherical_expectations(cubature, (s) -> g(s) * s / c, distribution)
-    cov  = spherical_expectations(cubature, (s) -> g(s) * (s - mean) * (s - mean)' / c, distribution)
+    # c    = approximate_kernel_expectation(cubature, g, distribution)
+    # mean = approximate_kernel_expectation(cubature, (s) -> g(s) * s / c, distribution)
+    # cov  = approximate_kernel_expectation(cubature, (s) -> g(s) * (s - mean) * (s - mean)' / c, distribution)
+
+    c    = unscentedStatistics(cubature, g, distribution)
+    mean = unscentedStatistics(cubature, (s) -> g(s) * s / c, distribution)
+    cov  = unscentedStatistics(cubature, (s) -> g(s) * (s - mean) * (s - mean)' / c, distribution)
+
+    # @show c
 
     return mean, cov
 end
 
-function spherical_expectations(cubature::SphericalRadialCubature, g, distribution)
+function unscentedStatistics(::SphericalRadialCubature, g::Function, distribution; alpha=1.0, beta=0.0, kappa=1.0)
+    m, V = ForneyLab.unsafeMeanCov(distribution)
+    (sigma_points, weights_m, weights_c) = ForneyLab.sigmaPointsAndWeights(m, V; alpha=alpha, beta=beta, kappa=kappa)
+    d = length(m)
+
+    g_sigma = g.(sigma_points)
+    m_tilde = sum([weights_m[k+1]*g_sigma[k+1] for k=0:2*d])
+
+    return m_tilde
+end
+
+function approximate_kernel_expectation(cubature::SphericalRadialCubature, g, distribution)
     m, V = ForneyLab.unsafeMeanCov(distribution)
 
     weights = getweights(cubature)

@@ -126,8 +126,8 @@ function ruleMGaussianMeanPrecisionFGD(msg_out::Message{Function,Multivariate},
     m_mean,v_mean = unsafeMeanCov(msg_mean.dist)
     Wbar = unsafeMean(dist_prec)
     jitter = Diagonal(1e-13*(rand(size(Wbar,1))) .* diag(Wbar))
-    W = [(Wbar + jitter) -Wbar; -Wbar (Wbar + jitter)]
-    # W = [Wbar -Wbar; -Wbar Wbar]
+    # W = [(Wbar + jitter) -Wbar; -Wbar (Wbar + jitter)]
+    W = [ Wbar -Wbar; -Wbar Wbar ]
 
     logpdf = msg_out.dist.params[:log_pdf]
 
@@ -145,27 +145,6 @@ function ruleMGaussianMeanPrecisionFGD(msg_out::Message{Function,Multivariate},
         return ProbabilityDistribution(Multivariate,GaussianMeanVariance,m=m_joint,v=v_joint)
     catch e
         println("fallback")
-        # println(approximate_norm(cubature, (z) -> exp.(logpdf(z)) / norm, msg_fwd.dist))
-        # a = -5
-        # b = 5
-        # n = 100
-        # d = (b - a) / n
-        # x = range(a,stop=b,length=n)
-        # y = range(a,stop=b,length=n)
-        # integral = 0.0
-        # for xp in x
-        #     for yp in y
-        #         integral += d^2 * (exp.(logpdf([ xp, yp ])) ./ norm) .* exp.(logPdf(msg_mean.dist, [ xp, yp ]))
-        #     end
-        # end
-        # f(x,y) = exp.(logpdf([ x, y ])) ./ norm .* exp.(logPdf(msg_mean.dist, [ x, y ]))
-        # @show integral
-        # plot(x,y,f, st=:surface, camera=(-30,30))
-        # grad_g = (x) -> ReverseDiff.gradient(g, x)
-        # r = nlsolve(grad_g, x_0, method = :newton, ftol = 1e-8)
-        # xzero = r.zero
-        # p = scatter!()
-        # display(p)
 
         # Use cubature as a fallback
         cubature  = msg_out.dist.params[:cubature]
