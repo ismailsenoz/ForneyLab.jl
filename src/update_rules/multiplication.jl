@@ -32,3 +32,8 @@
                 :outbound_type => Message{PointMass},
                 :inbound_types => (Message{PointMass}, Message{PointMass}, Nothing),
                 :name          => SPMultiplicationAPPN)
+
+@sumProductRule(:node_type     => Multiplication,
+                :outbound_type => Message{Function},
+                :inbound_types => (Message{Function}, Nothing, Message{PointMass}),
+                :name          => SPMultiplicationAFNP)

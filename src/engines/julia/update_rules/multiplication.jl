@@ -5,7 +5,8 @@ ruleSPMultiplicationOutNPP,
 ruleSPMultiplicationIn1GNP,
 ruleSPMultiplicationIn1PNP,
 ruleSPMultiplicationAGPN,
-ruleSPMultiplicationAPPN
+ruleSPMultiplicationAPPN,
+ruleSPMultiplicationAFNP
 
 #-------------------------------
 # Univariate (in1 and a commute)
@@ -111,6 +112,14 @@ ruleSPMultiplicationIn1PNP(msg_out::Message{PointMass, Multivariate}, msg_in1::N
     Message(Multivariate, PointMass, m=pinv(msg_a.dist.params[:m])*msg_out.dist.params[:m])
 
 function ruleSPMultiplicationIn1GNP(m::Message{GaussianMeanVariance,Multivariate}, ::Nothing, p::Message{PointMass,Univariate})
+    if isapprox(p.dist.params[:m], 1.0)
+        return m
+    else
+        throw("Don't ever use this rule")
+    end
+end
+
+function ruleSPMultiplicationAFNP(m::Message{Function,Multivariate}, ::Nothing, p::Message{PointMass,Univariate})
     if isapprox(p.dist.params[:m], 1.0)
         return m
     else

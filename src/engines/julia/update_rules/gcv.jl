@@ -167,14 +167,14 @@ function ruleSVBGCVLaplaceZDN(dist_out_mean::ProbabilityDistribution{Multivariat
         -0.5*(logdet(gz) + tr(cholinv(gz)*psi))
     end
 
-    epoint = ForneyLab.unsafeMean(msg_z.dist)
-    epoint[1] += tiny
+    # epoint = ForneyLab.unsafeMean(msg_z.dist)
+    # epoint[1] += tiny
 
-    mean, cov = NewtonMethod((s) -> l_pdf(s) + logPdf(msg_z.dist, s), epoint)
+    # mean, cov = NewtonMethod((s) -> l_pdf(s) + logPdf(msg_z.dist, s), epoint)
 
     # smoothRTSMessage(m_tilde, V_tilde, C_tilde, m_fw_in, V_fw_in, m_bw_out, V_bw_out)
 
-    return Message(Multivariate, GaussianMeanVariance, m = mean, v = cov)
+    return Message(Multivariate, Function, log_pdf = l_pdf, cubature = nothing)
 end
 
 function ruleMGCVLaplaceMGGD(msg_out::Message{F1, Multivariate},msg_m::Message{F2, Multivariate},dist_z::ProbabilityDistribution{Multivariate,F3},g::Function) where {F1<:Gaussian,F2<:Gaussian,F3<:Gaussian}
@@ -210,6 +210,13 @@ end
     z.params[:m] = m
     z.params[:v] = V
     return z
+end
+
+function approximate_meancov(::Nothing, g, distribution)
+    epoint = ForneyLab.unsafeMean(distribution)
+    epoint[1] += tiny
+    mean, cov = NewtonMethod((s) -> log(g(s)) + logPdf(distribution, s), epoint)
+    return mean, cov
 end
 
 import NLsolve: nlsolve, converged

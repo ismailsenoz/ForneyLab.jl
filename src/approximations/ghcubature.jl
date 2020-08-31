@@ -10,6 +10,9 @@ const sigma_weights_20 = [2.2293936455341583e-13, 4.399340992273223e-10, 1.08606
 const sigma_points_2 = [-0.7071067811865476, 0.7071067811865476]
 const sigma_weights_2 = [0.8862269254527579, 0.8862269254527579]
 
+const sigma_points_10 = [-3.4361591188377374, -2.5327316742327897, -1.7566836492998803, -1.0366108297895167, -0.34290132722370714, 0.34290132722370714, 1.0366108297895167, 1.7566836492998803, 2.5327316742327897, 3.4361591188377374]
+const sigma_weights_10 = [7.64043285523261e-6, 0.0013436457467812292, 0.03387439445548134, 0.240138611082315, 0.6108626337353252, 0.6108626337353252, 0.240138611082315, 0.03387439445548134, 0.0013436457467812292, 7.64043285523261e-6]
+
 const product = Iterators.product
 const repeated = Iterators.repeated
 
@@ -21,8 +24,8 @@ function multiDimensionalPointsWeightsGrid(ndims::Int, p::Int)
     # we use fixed p = 20 for the beginning
 
     # creates lazy multi-dimensional grid
-    witer = product(repeated(sigma_weights_2, ndims)...)
-    piter = product(repeated(sigma_points_2, ndims)...)
+    witer = product(repeated(sigma_weights_20, ndims)...)
+    piter = product(repeated(sigma_points_20, ndims)...)
 
     return witer, piter
 end
