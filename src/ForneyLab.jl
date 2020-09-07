@@ -4,7 +4,7 @@ using Base.Meta: parse
 using Base64: base64encode
 using LinearAlgebra: diag, det, tr, cholesky, pinv, PosDefException
 using SparseArrays: spzeros
-using SpecialFunctions: digamma, erfc, logfactorial, logabsgamma, logabsbeta
+using SpecialFunctions: digamma, erfc, logfactorial, logabsgamma, logabsbeta, gamma, loggamma
 using LinearAlgebra: Diagonal, Hermitian, isposdef, ishermitian, I, tr
 using InteractiveUtils: subtypes
 using Printf: @sprintf
@@ -48,6 +48,7 @@ include("factor_nodes/log_normal.jl")
 include("factor_nodes/wishart.jl")
 include("factor_nodes/bernoulli.jl")
 include("factor_nodes/categorical.jl")
+include("factor_nodes/sample_list.jl")
 include("factor_nodes/contingency.jl")
 include("factor_nodes/transition.jl")
 include("factor_nodes/beta.jl")
@@ -59,9 +60,14 @@ include("factor_nodes/softmax.jl")
 include("factor_nodes/dot_product.jl")
 include("factor_nodes/poisson.jl")
 include("factor_nodes/nonlinear.jl")
+<<<<<<< HEAD
 include("factor_nodes/sample_list.jl")
 # include("factor_nodes/gaussian_controlled_variance.jl")
 # include("factor_nodes/exponential_linear_quadratic.jl")
+=======
+
+
+>>>>>>> 5870414685d919d5b38811a0b1dfb1a42bac1aa9
 
 
 # Factor graph
