@@ -144,7 +144,7 @@ function ruleMGaussianMeanPrecisionFGD(msg_out::Message{Function,Multivariate},
         m_joint, v_joint = NewtonMethod(l, [ point1; m_mean ])
         return ProbabilityDistribution(Multivariate,GaussianMeanVariance,m=m_joint,v=v_joint)
     catch e
-        println("fallback")
+        # println("fallback")
 
         # Use cubature as a fallback
         cubature  = msg_out.dist.params[:cubature]

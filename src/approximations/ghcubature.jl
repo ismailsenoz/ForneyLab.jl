@@ -24,8 +24,8 @@ function multiDimensionalPointsWeightsGrid(ndims::Int, p::Int)
     # we use fixed p = 20 for the beginning
 
     # creates lazy multi-dimensional grid
-    witer = product(repeated(sigma_weights_20, ndims)...)
-    piter = product(repeated(sigma_points_20, ndims)...)
+    witer = product(repeated(sigma_weights_5, ndims)...)
+    piter = product(repeated(sigma_points_5, ndims)...)
 
     return witer, piter
 end
