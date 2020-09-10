@@ -148,7 +148,7 @@ function ruleSVBGCVLaplaceOutNGD(msg_out::Nothing,msg_m::Message{F, Multivariate
     cubature = srcubature(ndims)
 
     # Λ = approximate_kernel_expectation(cubature, (s) -> cholinv(g(s)), dist_z)
-    Λ = unscentedStatistics(cubature, (s) -> cholinv(g(s)), dist_z)
+    Λ_out = unscentedStatistics(cubature, (s) -> cholinv(g(s)), dist_z)
 
     return Message(Multivariate, GaussianMeanVariance,m=mean_m,v=cov_m+cholinv(Λ_out))
 end
