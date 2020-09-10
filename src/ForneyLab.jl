@@ -124,6 +124,7 @@ include("update_rules/poisson.jl")
 
 include("update_rules/nonlinear_unscented.jl")
 include("update_rules/nonlinear_sampling.jl")
+include("update_rules/nonlinear_extended.jl")
 include("update_rules/sample_list.jl")
 
 
