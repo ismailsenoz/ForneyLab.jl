@@ -60,15 +60,7 @@ include("factor_nodes/softmax.jl")
 include("factor_nodes/dot_product.jl")
 include("factor_nodes/poisson.jl")
 include("factor_nodes/nonlinear.jl")
-<<<<<<< HEAD
 include("factor_nodes/sample_list.jl")
-# include("factor_nodes/gaussian_controlled_variance.jl")
-# include("factor_nodes/exponential_linear_quadratic.jl")
-=======
-
-
->>>>>>> 5870414685d919d5b38811a0b1dfb1a42bac1aa9
-
 
 # Factor graph
 include("factor_graph.jl")
