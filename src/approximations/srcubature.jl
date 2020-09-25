@@ -42,13 +42,13 @@ end
 function approximate_meancov(cubature::SphericalRadialCubature, g, distribution)
     ndims = cubature.ndims
 
-    # c    = approximate_kernel_expectation(cubature, g, distribution)
-    # mean = approximate_kernel_expectation(cubature, (s) -> g(s) * s / c, distribution)
-    # cov  = approximate_kernel_expectation(cubature, (s) -> g(s) * (s - mean) * (s - mean)' / c, distribution)
+    c    = approximate_kernel_expectation(cubature, g, distribution)
+    mean = approximate_kernel_expectation(cubature, (s) -> g(s) * s / c, distribution)
+    cov  = approximate_kernel_expectation(cubature, (s) -> g(s) * (s - mean) * (s - mean)' / c, distribution)
 
-    c    = unscentedStatistics(cubature, g, distribution)
-    mean = unscentedStatistics(cubature, (s) -> g(s) * s / c, distribution)
-    cov  = unscentedStatistics(cubature, (s) -> g(s) * (s - mean) * (s - mean)' / c, distribution)
+    # c    = unscentedStatistics(cubature, g, distribution)
+    # mean = unscentedStatistics(cubature, (s) -> g(s) * s / c, distribution)
+    # cov  = unscentedStatistics(cubature, (s) -> g(s) * (s - mean) * (s - mean)' / c, distribution)
 
     # @show c
 
