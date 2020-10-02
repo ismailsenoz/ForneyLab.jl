@@ -102,8 +102,8 @@ function ruleSVBGCVSphericalRadialOutNGD(msg_out::Nothing,msg_m::Message{F, Mult
 
     cubature = srcubature(ndims)
 
-    # Λ_out = approximate_kernel_expectation(cubature, (s) -> cholinv(g(s)), dist_z)
-    Λ_out = unscentedStatistics(cubature, (s) -> cholinv(g(s)), dist_z)
+    Λ_out = approximate_kernel_expectation(cubature, (s) -> cholinv(g(s)), dist_z)
+    # Λ_out = unscentedStatistics(cubature, (s) -> cholinv(g(s)), dist_z)
 
     return Message(Multivariate, GaussianMeanVariance,m=mean_m,v=cov_m+cholinv(Λ_out))
 end
@@ -132,8 +132,8 @@ function ruleMGCVSphericalRadialMGGD(msg_out::Message{F1, Multivariate},msg_m::M
 
     cubature = srcubature(ndims)
 
-    # Λ = approximate_kernel_expectation(cubature, (s) -> cholinv(g(s)), dist_z)
-    Λ = unscentedStatistics(cubature, (s) -> cholinv(g(s)), dist_z)
+    Λ = approximate_kernel_expectation(cubature, (s) -> cholinv(g(s)), dist_z)
+    # Λ = unscentedStatistics(cubature, (s) -> cholinv(g(s)), dist_z)
 
     W = [ Λ + Λ_out -Λ; -Λ Λ_m + Λ] # + 1e-8*diageye(2*d)
     return ProbabilityDistribution(Multivariate, GaussianWeightedMeanPrecision, xi=[xi_out;xi_mean], w = W)
@@ -147,10 +147,10 @@ function ruleSVBGCVLaplaceOutNGD(msg_out::Nothing,msg_m::Message{F, Multivariate
 
     cubature = srcubature(ndims)
 
-    # Λ = approximate_kernel_expectation(cubature, (s) -> cholinv(g(s)), dist_z)
-    Λ_out = unscentedStatistics(cubature, (s) -> cholinv(g(s)), dist_z)
+    Λ = approximate_kernel_expectation(cubature, (s) -> cholinv(g(s)), dist_z)
+    # Λ_out = unscentedStatistics(cubature, (s) -> cholinv(g(s)), dist_z)
 
-    return Message(Multivariate, GaussianMeanVariance,m=mean_m,v=cov_m+cholinv(Λ_out))
+    return Message(Multivariate, GaussianMeanVariance,m=mean_m,v=cov_m+cholinv(Λ))
 end
 
 ruleSVBGCVLaplaceMGND(msg_out::Message{F, Multivariate},msg_m::Nothing, dist_z::ProbabilityDistribution{Multivariate}, g::Function) where F<:Gaussian =
@@ -164,7 +164,7 @@ function ruleSVBGCVLaplaceZDN(dist_out_mean::ProbabilityDistribution{Multivariat
 
     l_pdf(z) = begin
         gz = g(z)
-        -0.5*(logdet(gz) + tr(cholinv(gz)*psi))
+        return -0.5*(logdet(gz) + tr(cholinv(gz)*psi))
     end
 
     # epoint = ForneyLab.unsafeMean(msg_z.dist)
@@ -185,8 +185,8 @@ function ruleMGCVLaplaceMGGD(msg_out::Message{F1, Multivariate},msg_m::Message{F
 
     cubature = srcubature(ndims)
 
-    # Λ = approximate_kernel_expectation(cubature, (s) -> cholinv(g(s)), dist_z)
-    Λ = unscentedStatistics(cubature, (s) -> cholinv(g(s)), dist_z)
+    Λ = approximate_kernel_expectation(cubature, (s) -> cholinv(g(s)), dist_z)
+    # Λ = unscentedStatistics(cubature, (s) -> cholinv(g(s)), dist_z)
 
     W = [ Λ + Λ_out -Λ; -Λ Λ_m + Λ] # + 1e-8*diageye(2*d)
     return ProbabilityDistribution(Multivariate, GaussianWeightedMeanPrecision, xi=[xi_out;xi_mean], w = W)
@@ -199,8 +199,6 @@ end
 
     y = convert(ProbabilityDistribution{Multivariate,GaussianMeanVariance},y)
     ndims = dims(y)
-
-    # @show y
 
     g(s) = exp(x.params[:log_pdf](s))
     cubature = x.params[:cubature]
@@ -215,7 +213,8 @@ end
 function approximate_meancov(::Nothing, g, distribution)
     epoint = ForneyLab.unsafeMean(distribution)
     epoint[1] += tiny
-    mean, cov = NewtonMethod((s) -> log(g(s)) + logPdf(distribution, s), epoint)
+    # @show epoint
+    mean, cov = NewtonMethod((s) -> log(g(s)) + logPdf(distribution, s), rand(length(epoint)))
     return mean, cov
 end
 
@@ -238,16 +237,12 @@ function NewtonMethod2(g::Function, x_0::Array{Float64})
     grad = (s) -> -ReverseDiff.gradient(g, s)
     hess = (s) -> ForwardDiff.hessian(g, s)
 
-    r = nlsolve(grad, hess, x_0, method = :newton, ftol = 1e-8)
+    r = nlsolve(grad, hess, x_0, method = :newton, ftol = 1e-3)
 
     mode = r.zero
-
-    @show r
-    @show mode
-
     cov  = cholinv(-ForwardDiff.hessian(g, mode))
 
-    return x, var
+    return mode, cov
 end
 
 function NewtonMethod3(g::Function, x_0::Array{Float64})
@@ -260,15 +255,15 @@ function NewtonMethod3(g::Function, x_0::Array{Float64})
     for i = 1:10
         grad = ReverseDiff.gradient(g, mode)
         hess = ForwardDiff.hessian(g, mode)
-        var = -cholinv(hess)
+        var = -pinv(hess)
         mode = mode + var * grad
     end
 
-    @show mode
+    # @show mode
 
-    # cov  = cholinv(-ForwardDiff.hessian(g, mode))
+    cov  = pinv(-ForwardDiff.hessian(g, mode))
 
-    return mode, nothing
+    return mode, cov
 end
 
 function collectStructuredVariationalNodeInbounds(node::GCV, entry::ScheduleEntry)

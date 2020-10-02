@@ -9,8 +9,9 @@ srcubature(ndims::Int) = SphericalRadialCubature(ndims)
 
 function getweights(cubature::SphericalRadialCubature)
     d = cubature.ndims
-    return Base.Generator(1:2d) do _
-        return 1.0 / (2.0 * d)
+    return Base.Generator(1:2d + 1) do i
+        return i === (2d + 1) ? 1.0 / (d + 1) : 1.0 / (2.0(d + 1))
+        # return 1.0 / (2.0 * d + 1)
     end
 end
 
@@ -24,10 +25,14 @@ function getpoints(cubature::SphericalRadialCubature, m, P)
     end
 
     tmpbuffer = zeros(d)
-    sigma_points = Base.Generator(1:2d) do i
-        tmpbuffer[rem((i - 1), d) + 1] = sqrt(d) * (-1)^(div(i - 1, d))
-        if i !== 1
-            tmpbuffer[rem((i - 2), d) + 1] = 0.0
+    sigma_points = Base.Generator(1:2d + 1) do i
+        if i === (2d + 1)
+            fill!(tmpbuffer, 0.0)
+        else
+            tmpbuffer[rem((i - 1), d) + 1] = sqrt(d + 1) * (-1)^(div(i - 1, d))
+            if i !== 1
+                tmpbuffer[rem((i - 2), d) + 1] = 0.0
+            end
         end
         return tmpbuffer
     end

@@ -234,7 +234,7 @@ end
 # Gradient optimization subroutine
 #---------------------------------
 
-function gradientOptimization(log_joint::Function, d_log_joint::Function, m_initial, step_size)
+function gradientOptimization(log_joint::Function, d_log_joint::Function, m_initial, step_size, callback = nothing)
     dim_tot = length(m_initial)
     m_total = zeros(dim_tot)
     m_average = zeros(dim_tot)
@@ -245,6 +245,9 @@ function gradientOptimization(log_joint::Function, d_log_joint::Function, m_init
 
     while !satisfied
         m_new = m_old .+ step_size.*d_log_joint(m_old)
+        if callback !== nothing
+            callback(m_new)
+        end
         if log_joint(m_new) > log_joint(m_old)
             proposal_step_size = 10*step_size
             m_proposal = m_old .+ proposal_step_size.*d_log_joint(m_old)
@@ -259,8 +262,10 @@ function gradientOptimization(log_joint::Function, d_log_joint::Function, m_init
         step_count += 1
         m_total .+= m_old
         m_average = m_total ./ step_count
-        if step_count > 10
-            if sum(sqrt.(((m_new.-m_average)./m_average).^2)) < dim_tot*0.001
+        if step_count > 5
+            if sum(sqrt.(((m_new.-m_average)./m_average).^2)) < dim_tot*0.01
+                satisfied = true
+            elseif abs(log_joint(m_new) - log_joint(m_old)) < 1e-6
                 satisfied = true
             end
         end

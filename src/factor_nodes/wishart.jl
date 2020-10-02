@@ -83,6 +83,7 @@ function prod!( x::ProbabilityDistribution{MatrixVariate, Wishart},
                 z::ProbabilityDistribution{MatrixVariate, Wishart}=ProbabilityDistribution(MatrixVariate, Wishart, v=mat(1.0), nu=1.0))
 
     d = dims(x)[1]
+    
     z.params[:v] = x.params[:v] * cholinv(x.params[:v] + y.params[:v]) * y.params[:v]
     z.params[:nu] = x.params[:nu] + y.params[:nu] - d - 1.0
 
